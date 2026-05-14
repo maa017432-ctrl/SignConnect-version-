@@ -265,6 +265,7 @@ def latest_prediction() -> tuple[dict[str, object], int]:
                 "confidence": float(payload.get("confidence") or 0.0),
                 "smoothed_label": payload.get("smoothed_label"),
                 "top_candidates": payload.get("top_candidates") or [],
+                "coaching": payload.get("coaching") or {"state": "error", "issue": "missing", "message": "Hand not detected"},
                 "model_type": payload.get("model_type"),
                 "inference_ms": payload.get("inference_ms"),
                 "sentence": builder.sentence if builder else "",
@@ -574,7 +575,11 @@ def translate() -> tuple[dict[str, str | int], int]:
 
     try:
         latest = current_app.extensions.get("latest_prediction") or {}
-        confidence = float(latest.get("confidence") or 0.0)
+        confidence = float(
+            latest.get("last_valid_confidence")
+            or latest.get("confidence")
+            or 0.0
+        )
         with get_connection(current_app.config["DATABASE_PATH"]) as connection:
             row = connection.execute(
                 "SELECT id FROM sessions ORDER BY id DESC LIMIT 1"
@@ -629,7 +634,17 @@ def get_history() -> tuple[list[dict[str, str | float | None]], int]:
             "id": row["id"],
             "gesture_label": row["gesture_label"],
             "confidence": row["confidence"],
+            "confidence_pct": (
+                round(float(row["confidence"]) * 100.0, 2)
+                if row["confidence"] is not None
+                else None
+            ),
             "audio_file": row["audio_file"],
+            "audio_path": (
+                f"/static/audio/{row['audio_file']}"
+                if row["audio_file"]
+                else None
+            ),
             "created_at": row["created_at"],
         }
         for row in rows
@@ -665,22 +680,29 @@ def export_history_csv() -> Response | tuple[Response, int]:
 
     buffer = io.StringIO(newline="")
     writer = csv.writer(buffer)
-    writer.writerow(["gesture_label", "confidence", "audio_file", "created_at"])
+    writer.writerow(["label", "confidence", "timestamp", "audio_path"])
     for row in rows:
+        confidence_pct = (
+            f"{float(row['confidence']) * 100.0:.2f}%"
+            if row["confidence"] is not None
+            else ""
+        )
+        audio_path = f"/static/audio/{row['audio_file']}" if row["audio_file"] else ""
         writer.writerow(
             [
                 row["gesture_label"],
-                row["confidence"],
-                row["audio_file"],
+                confidence_pct,
                 row["created_at"],
+                audio_path,
             ]
         )
 
     csv_body = buffer.getvalue()
     response = Response(csv_body, mimetype="text/csv")
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    user_segment = str(user_id) if user_id is not None else "guest"
     response.headers["Content-Disposition"] = (
-        f"attachment; filename=signconnect_history_{user_id}_{timestamp}.csv"
+        f"attachment; filename=signconnect_history_{user_segment}_{timestamp}.csv"
     )
     return response
 
@@ -719,10 +741,15 @@ def clear_history() -> tuple[dict[str, str], int]:
     user_id = session.get("user_id")
     with get_connection(current_app.config["DATABASE_PATH"]) as connection:
         if user_id is None:
-            connection.execute("DELETE FROM translations WHERE user_id IS NULL")
+            deleted = connection.execute(
+                "DELETE FROM translations WHERE user_id IS NULL"
+            ).rowcount
         else:
-            connection.execute("DELETE FROM translations WHERE user_id = ?", (user_id,))
-    return jsonify({"status": "cleared"}), 200
+            deleted = connection.execute(
+                "DELETE FROM translations WHERE user_id = ?",
+                (user_id,),
+            ).rowcount
+    return jsonify({"status": "cleared", "deleted": int(deleted or 0)}), 200
 
 
 @api_bp.post("/api/model/reload")

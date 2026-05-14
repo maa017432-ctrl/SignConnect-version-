@@ -39,7 +39,7 @@
                   <th>Time</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="history-tbody">
                 {% for row in rows %}
                 <tr>
                   <td><span class="sc-gesture-tag">{{ row['gesture_label'] }}</span></td>
@@ -47,7 +47,7 @@
                     {% if row['confidence'] is not none %}
                     <div class="sc-conf-cell">
                       <div class="sc-conf-bar-mini"><div class="sc-conf-fill-mini" style="width:{{ (row['confidence']*100)|round|int }}%"></div></div>
-                      <span>{{ "%.1f"|format(row['confidence'] * 100) }}%</span>
+                      <span>{{ "%.2f"|format(row['confidence'] * 100) }}%</span>
                     </div>
                     {% else %}—{% endif %}
                   </td>
@@ -86,7 +86,7 @@
               <div class="sc-stat-mini">
                 <span class="sc-stat-mini-val">
                   {% if rows|length > 0 %}
-                    {{ "%.0f"|format((rows|map(attribute='confidence')|select('ne', none)|list|sum / rows|selectattr('confidence', 'ne', none)|list|length * 100) if rows|selectattr('confidence', 'ne', none)|list|length > 0 else 0) }}%
+                    {{ "%.2f"|format((rows|map(attribute='confidence')|select('ne', none)|list|sum / rows|selectattr('confidence', 'ne', none)|list|length * 100) if rows|selectattr('confidence', 'ne', none)|list|length > 0 else 0) }}%
                   {% else %}0%{% endif %}
                 </span>
                 <span class="sc-stat-mini-lbl">Avg Conf.</span>
@@ -116,73 +116,3 @@
   </div>
 </div>
 {% endblock %}
-
-<script>
-(function () {
-  // ── Timestamp formatting ──────────────────────────────────────
-  document.querySelectorAll('.sc-timestamp').forEach(function (el) {
-    var raw = el.dataset.ts;
-    if (!raw) return;
-    try {
-      var date = new Date(raw.replace(' ', 'T') + 'Z');
-      var now = Date.now();
-      var diff = Math.floor((now - date.getTime()) / 1000);
-      var text;
-      if (diff < 60) text = 'Just now';
-      else if (diff < 3600) text = Math.floor(diff / 60) + 'm ago';
-      else if (diff < 86400) text = Math.floor(diff / 3600) + 'h ago';
-      else text = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-      el.textContent = text;
-      el.title = date.toLocaleString();
-    } catch (e) { /* leave raw string */ }
-  });
-
-  // ── CSV Export ──────────────────────────────────────────────
-  var exportBtn = document.getElementById('download-history-btn');
-  var clearBtn = document.getElementById('clear-history-page-btn');
-  var csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
-
-  if (exportBtn) {
-    exportBtn.addEventListener('click', async function () {
-      exportBtn.textContent = '⏳ Preparing…';
-      exportBtn.disabled = true;
-      try {
-        const res = await fetch('/api/export_history');
-        if (!res.ok) throw new Error('Server error ' + res.status);
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'signconnect_history.csv';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-        exportBtn.textContent = '✅ Downloaded!';
-        setTimeout(function() {
-          exportBtn.textContent = '⬇ Download History CSV';
-          exportBtn.disabled = false;
-        }, 2000);
-      } catch (err) {
-        exportBtn.textContent = '❌ Download failed';
-        exportBtn.disabled = false;
-        setTimeout(function() { exportBtn.textContent = '⬇ Download History CSV'; }, 2000);
-      }
-    });
-  }
-
-  // ── Clear history confirmation ────────────────────────────────
-  if (clearBtn) {
-    clearBtn.addEventListener('click', function () {
-      if (!confirm('Clear all translation history? This cannot be undone.')) return;
-      fetch('/api/history', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-        body: new URLSearchParams({ csrf_token: csrfToken }).toString(),
-      })
-        .then(function () { location.reload(); })
-        .catch(function () { alert('Failed to clear history.'); });
-    });
-  }
-})();
-</script>

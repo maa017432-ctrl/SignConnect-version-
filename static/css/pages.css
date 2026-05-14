@@ -63,6 +63,10 @@ html[data-theme="light"] .sc-btn--active:hover{background:rgba(139,92,246,.25)}
 .sc-camera-overlay-bar{position:absolute;top:0;left:0;right:0;height:48px;background:linear-gradient(to bottom,rgba(0,0,0,.6),transparent);z-index:10;display:flex;align-items:center;justify-content:space-between;padding:0 20px}
 .sc-camera-chip{display:flex;align-items:center;gap:6px;font-size:11px;font-family:var(--font-mono,monospace);color:rgba(255,255,255,.7);background:rgba(0,0,0,.4);padding:4px 10px;border-radius:6px;backdrop-filter:blur(8px)}
 .sc-chip-icon{width:14px;height:14px;color:#a78bfa}
+.sc-prediction-overlay{position:absolute;left:14px;bottom:14px;display:flex;align-items:baseline;gap:10px;padding:10px 14px;border-radius:12px;background:rgba(2,6,23,.7);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.12);z-index:11;transition:opacity .2s,transform .2s;max-width:calc(100% - 28px)}
+.sc-prediction-overlay--hidden{opacity:0;transform:translateY(4px);pointer-events:none}
+.sc-prediction-overlay-label{font-size:clamp(14px,2.3vw,20px);font-weight:700;letter-spacing:.02em;color:#f8fafc;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;max-width:70%}
+.sc-prediction-overlay-confidence{font-size:clamp(12px,2vw,16px);font-weight:600;color:#bfdbfe;white-space:nowrap}
 
 .sc-camera-off-icon{width:64px;height:64px;border-radius:50%;background:rgba(30,41,59,.8);border:2px solid rgba(71,85,105,.5);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
 .sc-camera-off-icon svg{width:28px;height:28px;color:#64748b}
@@ -84,6 +88,14 @@ html[data-theme="light"] .sc-btn--active:hover{background:rgba(139,92,246,.25)}
 .sc-conf-pct{font-size:12px;font-weight:700;color:#94a3b8}
 
 .sc-btn--translate{padding:12px 24px;border-radius:14px;font-size:14px}
+.coaching-container{margin-top:12px;min-height:42px}
+.coaching-container.hidden{display:none}
+.coaching-message{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;font-size:13px;font-weight:600;border:1px solid transparent}
+.coaching-icon{font-size:14px}
+.coaching-message.info{background:rgba(59,130,246,.14);color:#bfdbfe;border-color:rgba(59,130,246,.35)}
+.coaching-message.warning{background:rgba(245,158,11,.14);color:#fde68a;border-color:rgba(245,158,11,.35)}
+.coaching-message.error{background:rgba(239,68,68,.14);color:#fecaca;border-color:rgba(239,68,68,.35)}
+.coaching-message.success{background:rgba(16,185,129,.14);color:#bbf7d0;border-color:rgba(16,185,129,.35)}
 
 /* Sentence Display */
 .sc-sentence-display{min-height:60px;padding:16px;background:rgba(5,8,22,.6);border:1px solid rgba(255,255,255,.05);border-radius:12px;font-size:15px;color:#e2e8f0;line-height:1.6;margin-bottom:12px}
@@ -107,6 +119,7 @@ html[data-theme="light"] .sc-btn--active:hover{background:rgba(139,92,246,.25)}
 @media(min-width:1024px){.sc-dict-layout{grid-template-columns:1fr 340px}}
 .sc-dict-main{display:flex;flex-direction:column;gap:16px}
 .sc-dict-sidebar{display:flex;flex-direction:column;gap:16px}
+.sc-dict-layout--full{grid-template-columns:1fr!important}
 
 .sc-search-wrap{position:relative}
 .sc-search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:#64748b;pointer-events:none}
@@ -151,6 +164,10 @@ html[data-theme="light"] .sc-btn--active:hover{background:rgba(139,92,246,.25)}
 
 .sc-empty-state{text-align:center;padding:48px 20px!important;color:#475569}
 .sc-empty-icon{width:48px;height:48px;color:#334155;margin:0 auto 12px;display:block}
+.sc-toast{position:fixed;right:24px;bottom:24px;z-index:3000;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;background:#0f172a;color:#e2e8f0;border:1px solid rgba(255,255,255,.14);box-shadow:0 10px 25px rgba(0,0,0,.35);opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .2s,transform .2s}
+.sc-toast--show{opacity:1;transform:translateY(0)}
+.sc-toast--success{border-color:rgba(16,185,129,.45);color:#86efac}
+.sc-toast--error{border-color:rgba(239,68,68,.45);color:#fca5a5}
 
 /* ── AUTH PAGES ── */
 .sc-auth-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#050816;position:relative;overflow:hidden}
@@ -208,7 +225,7 @@ html[data-theme="light"] .sc-btn--active:hover{background:rgba(139,92,246,.25)}
 /* Page layout */
 html[data-theme="light"] .sc-page{background:#f8fafc}
 html[data-theme="light"] .sc-page-title{color:#0f172a}
-html[data-theme="light"] .sc-page-subtitle{color:#475569}
+html[data-theme="light"] .sc-page-subtitle{color:#334155}
 
 /* Widgets */
 html[data-theme="light"] .sc-widget{background:#fff;border-color:rgba(0,0,0,.08)}
@@ -218,26 +235,32 @@ html[data-theme="light"] .sc-widget-header{border-bottom-color:rgba(0,0,0,.06);b
 html[data-theme="light"] .sc-widget-header h3{color:#0f172a}
 
 /* Buttons */
-html[data-theme="light"] .sc-btn{background:#fff;border-color:rgba(0,0,0,.1);color:#334155}
-html[data-theme="light"] .sc-btn:hover{background:#f1f5f9;border-color:rgba(0,0,0,.15);color:#0f172a}
+html[data-theme="light"] .sc-btn{background:#fff;border-color:rgba(15,23,42,.16);color:#1e293b}
+html[data-theme="light"] .sc-btn:hover{background:#eef2ff;border-color:rgba(79,70,229,.35);color:#0f172a}
 html[data-theme="light"] .sc-btn--primary{background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;border-color:transparent}
 html[data-theme="light"] .sc-btn--danger{color:#ef4444;border-color:rgba(239,68,68,.2)}
 
 /* Icon button */
 html[data-theme="light"] .sc-icon-btn{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.08);color:#64748b}
-html[data-theme="light"] .sc-icon-btn:hover{background:rgba(0,0,0,.06);color:#0f172a;border-color:rgba(0,0,0,.12)}
+html[data-theme="light"] .sc-icon-btn:hover{background:rgba(15,23,42,.08);color:#0f172a;border-color:rgba(15,23,42,.22)}
 
 /* Camera wrap */
 html[data-theme="light"] .sc-camera-wrap{background:#fff;border-color:rgba(0,0,0,.08);box-shadow:0 12px 40px rgba(0,0,0,.06)}
+html[data-theme="light"] .sc-camera-chip{color:#0f172a;background:rgba(255,255,255,.88);border:1px solid rgba(15,23,42,.16)}
+html[data-theme="light"] .sc-prediction-overlay{background:rgba(15,23,42,.76);border-color:rgba(255,255,255,.3)}
 
 /* Control bar */
 html[data-theme="light"] .sc-control-bar{background:#fff;border-color:rgba(0,0,0,.08)}
-html[data-theme="light"] .sc-control-label{color:#94a3b8}
+html[data-theme="light"] .sc-control-label{color:#475569}
 html[data-theme="light"] .sc-control-value{color:#0f172a}
 html[data-theme="light"] .sc-control-divider{background:rgba(0,0,0,.08)}
 
 /* Sentence display */
 html[data-theme="light"] .sc-sentence-display{background:#f1f5f9;border-color:rgba(0,0,0,.06);color:#0f172a}
+html[data-theme="light"] .coaching-message.info{background:rgba(59,130,246,.1);color:#1d4ed8;border-color:rgba(59,130,246,.25)}
+html[data-theme="light"] .coaching-message.warning{background:rgba(245,158,11,.1);color:#92400e;border-color:rgba(217,119,6,.25)}
+html[data-theme="light"] .coaching-message.error{background:rgba(239,68,68,.1);color:#b91c1c;border-color:rgba(220,38,38,.25)}
+html[data-theme="light"] .coaching-message.success{background:rgba(16,185,129,.1);color:#047857;border-color:rgba(5,150,105,.25)}
 
 /* Stats mini grid */
 html[data-theme="light"] .sc-stat-mini{background:#f8fafc;border-color:rgba(0,0,0,.06)}
@@ -262,7 +285,7 @@ html[data-theme="light"] .sc-search-input::placeholder{color:#94a3b8}
 
 /* History table */
 html[data-theme="light"] .sc-table th{color:#94a3b8;border-bottom-color:rgba(0,0,0,.06)}
-html[data-theme="light"] .sc-table td{color:#475569;border-bottom-color:rgba(0,0,0,.04)}
+html[data-theme="light"] .sc-table td{color:#334155;border-bottom-color:rgba(0,0,0,.06)}
 html[data-theme="light"] .sc-table tr:hover td{background:rgba(0,0,0,.02)}
 
 /* Auth pages */
@@ -401,4 +424,3 @@ html[data-theme="light"] .stg-avatar-name{color:#0f172a}
 html[data-theme="light"] .stg-avatar-email{color:#64748b}
 html[data-theme="light"] .stg-divider{background:rgba(0,0,0,.06)}
 html[data-theme="light"] .stg-toast{background:#fff;border-color:rgba(0,0,0,.1);color:#0f172a;box-shadow:0 8px 30px rgba(0,0,0,.1)}
-

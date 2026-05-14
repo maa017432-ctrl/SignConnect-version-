@@ -164,8 +164,10 @@ def create_app() -> Flask:
     app.extensions["latest_prediction"]   = {
         "label": None,
         "confidence": 0.0,
+        "last_valid_confidence": 0.0,
         "smoothed_label": None,
         "top_candidates": [],
+        "coaching": {"state": "error", "issue": "missing", "message": "Hand not detected"},
     }
 
     app.register_blueprint(main_bp)
