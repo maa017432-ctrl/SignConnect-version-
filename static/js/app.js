@@ -1217,9 +1217,19 @@
     }
   }
 
+  function formatConfidencePercent(raw, fraction = true) {
+    const baseValue = fraction ? Number(raw || 0) * 100 : Number(raw || 0);
+    const rounded = Math.max(0, Math.min(100, Math.round(baseValue * 100) / 100));
+    return {
+      numeric: rounded,
+      text: `${rounded.toFixed(2)}%`,
+    };
+  }
+
   /* ── Confidence badge ─────────────────────────────────────── */
   function updateConfidence(raw) {
-    const pct = Math.max(0, Math.min(100, Number(((raw || 0) * 100).toFixed(2))));
+    const formatted = formatConfidencePercent(raw, true);
+    const pct = formatted.numeric;
     if (pct === renderState.confidencePct) return;
     renderState.confidencePct = pct;
 
@@ -1233,7 +1243,7 @@
     // Update new confidence circle value if it exists
     const confidenceValue = document.getElementById("confidence-value");
     if (confidenceValue) {
-      confidenceValue.textContent = `${pct.toFixed(2)}%`;
+      confidenceValue.textContent = formatted.text;
     }
     if (confidenceFill) {
       confidenceFill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
@@ -1243,7 +1253,7 @@
   function updateVideoPredictionOverlay(label, confidence) {
     if (!predictionOverlay || !predictionOverlayLabel || !predictionOverlayConfidence) return;
     const cleanLabel = label && label !== "Unknown" ? String(label).toUpperCase() : "—";
-    const confText = `${Math.max(0, Math.min(100, Number(((confidence || 0) * 100).toFixed(2)))).toFixed(2)}%`;
+    const confText = formatConfidencePercent(confidence, true).text;
     if (cleanLabel === "—") {
       predictionOverlay.classList.add("sc-prediction-overlay--hidden");
       return;
@@ -1618,7 +1628,7 @@
           ? `<audio src="${escHtml(item.audio_path)}" controls preload="none" class="sc-audio"></audio>`
           : "—";
         const confidenceText = item.confidence != null
-          ? `${(Number(item.confidence) * 100).toFixed(2)}%`
+          ? formatConfidencePercent(item.confidence, true).text
           : "—";
         const relative = formatRelativeTime(item.created_at);
         tr.innerHTML = `
@@ -1651,13 +1661,13 @@
     const cardValues = document.querySelectorAll(".sc-history-sidebar .sc-stat-mini-val");
     if (!cardValues || cardValues.length < 3) return;
     const total = rows.length;
-    const withAudio = rows.filter((row) => Boolean(row.audio_file)).length;
+    const withAudio = rows.filter((row) => Boolean(row.audio_path || row.audio_file)).length;
     const confRows = rows.filter((row) => row.confidence != null);
     const avgConf = confRows.length
       ? (confRows.reduce((sum, row) => sum + Number(row.confidence || 0), 0) / confRows.length) * 100
       : 0;
     cardValues[0].textContent = String(total);
-    cardValues[1].textContent = `${avgConf.toFixed(2)}%`;
+    cardValues[1].textContent = formatConfidencePercent(avgConf, false).text;
     cardValues[2].textContent = String(withAudio);
     const badge = document.querySelector(".sc-history-main .sc-badge");
     if (badge) badge.textContent = `${total} entries`;
@@ -1682,6 +1692,8 @@
       toast = document.createElement("div");
       toast.id = "sc-global-toast";
       toast.className = "sc-toast";
+      toast.setAttribute("role", "status");
+      toast.setAttribute("aria-live", "polite");
       document.body.appendChild(toast);
     }
     toast.textContent = message;
