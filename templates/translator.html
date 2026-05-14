@@ -148,13 +148,8 @@
           </div>
           <div class="sc-widget-body">
             <div class="sc-setting-row">
-              <label for="lang-select">Language</label>
-              <select id="lang-select" class="sc-select" data-lang-select>
-                <option value="en">🇺🇸 ASL</option>
-                <option value="ar">🇸🇦 العربية</option>
-                <option value="fr">🇫🇷 Français</option>
-                <option value="es">🇪🇸 Español</option>
-              </select>
+              <label>Language</label>
+              <span class="sc-lang-badge">🇺🇸 US ASL</span>
             </div>
             <div class="sc-setting-row">
               <label for="threshold-slider">Confidence <span id="threshold-val" style="float:right;color:var(--text-muted);font-size:12px">75%</span></label>
@@ -200,7 +195,7 @@
   <input id="settings-audio-toggle" type="checkbox" />
   <input id="settings-training-toggle" type="checkbox" />
   <input id="settings-theme-toggle" type="checkbox" />
-  <select id="settings-lang-select"></select>
+  <select id="settings-lang-select"><option value="en">🇺🇸 US ASL</option></select>
   <div id="commit-progress"></div>
   <div id="progress-hint"></div>
   <span id="confidence-badge"></span>

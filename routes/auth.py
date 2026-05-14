@@ -23,7 +23,31 @@ from flask import current_app
 LOGGER = logging.getLogger(__name__)
 auth_bp = Blueprint("auth", __name__)
 
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+# Strict email regex: must have local-part, @, domain, dot, and TLD (2+ chars)
+_EMAIL_RE = re.compile(
+    r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+"
+    r"@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?"
+    r"(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*"
+    r"\.[a-zA-Z]{2,}$"
+)
+
+_PASSWORD_MIN_LEN = 8
+_PASSWORD_HAS_UPPER = re.compile(r"[A-Z]")
+_PASSWORD_HAS_LOWER = re.compile(r"[a-z]")
+_PASSWORD_HAS_DIGIT = re.compile(r"[0-9]")
+
+
+def _validate_password(password: str) -> str | None:
+    """Return an error message string if the password is invalid, or None if valid."""
+    if len(password) < _PASSWORD_MIN_LEN:
+        return f"Password must be at least {_PASSWORD_MIN_LEN} characters."
+    if not _PASSWORD_HAS_UPPER.search(password):
+        return "Password must contain at least one uppercase letter."
+    if not _PASSWORD_HAS_LOWER.search(password):
+        return "Password must contain at least one lowercase letter."
+    if not _PASSWORD_HAS_DIGIT.search(password):
+        return "Password must contain at least one number."
+    return None
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -69,6 +93,9 @@ def signin_post():
     if not email or not password:
         return render_template("signin.html", error="Email and password are required.")
 
+    if not _EMAIL_RE.match(email):
+        return render_template("signin.html", error="Please enter a valid email address.")
+
     db_path = current_app.config["DATABASE_PATH"]
     user = _get_user_by_email(db_path, email)
 
@@ -102,13 +129,18 @@ def signup_post():
     email = request.form.get("email", "").strip()
     password = request.form.get("password", "").strip()
 
-    # Validation
+    # Presence validation
     if not email or not password or not first:
-        return render_template("signup.html", error="All fields are required.")
+        return render_template("signup.html", error="First name, email, and password are required.")
+
+    # Email format validation
     if not _EMAIL_RE.match(email):
-        return render_template("signup.html", error="Please enter a valid email address.")
-    if len(password) < 8:
-        return render_template("signup.html", error="Password must be at least 8 characters.")
+        return render_template("signup.html", error="Please enter a valid email address (e.g. user@example.com).")
+
+    # Password complexity validation
+    pw_error = _validate_password(password)
+    if pw_error:
+        return render_template("signup.html", error=pw_error)
 
     db_path = current_app.config["DATABASE_PATH"]
 

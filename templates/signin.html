@@ -30,14 +30,16 @@
     </div>
     {% endif %}
 
-    <form class="sc-auth-form" method="POST" action="{{ url_for('auth.signin_post') }}" novalidate>
+    <form class="sc-auth-form" method="POST" action="{{ url_for('auth.signin_post') }}" novalidate id="signin-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="sc-form-group">
         <label for="auth-email">Email address</label>
         <input type="email" id="auth-email" name="email" placeholder="you@example.com" required autocomplete="email" class="sc-form-input">
       </div>
       <div class="sc-form-group">
-        <label for="auth-password">Password</label>
+        <div class="sc-form-label-row">
+          <label for="auth-password">Password</label>
+        </div>
         <input type="password" id="auth-password" name="password" placeholder="••••••••" required autocomplete="current-password" class="sc-form-input">
       </div>
       <button type="submit" class="sc-btn sc-btn--primary sc-auth-submit">Sign In</button>
@@ -48,4 +50,24 @@
     </p>
   </div>
 </div>
+
+<script>
+(function () {
+  const form = document.getElementById("signin-form");
+  const emailInput = document.getElementById("auth-email");
+  if (form && emailInput) {
+    form.addEventListener("submit", (e) => {
+      const emailVal = emailInput.value.trim();
+      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+      if (!emailRe.test(emailVal)) {
+        e.preventDefault();
+        emailInput.focus();
+        emailInput.style.borderColor = "#dc2626";
+      } else {
+        emailInput.style.borderColor = "";
+      }
+    });
+  }
+})();
+</script>
 {% endblock %}

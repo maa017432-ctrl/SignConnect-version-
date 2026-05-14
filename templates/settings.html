@@ -125,12 +125,12 @@
           <div class="sc-widget">
             <div class="stg-form">
               <div class="stg-field">
-                <label for="camera-index">Camera Index</label>
-                <p class="stg-field-sub">Select which camera to use (0 = default, 1 = secondary)</p>
+                <label for="camera-index">Camera Selection</label>
+                <p class="stg-field-sub">Camera 1 is your external webcam (recommended). Camera 0 is the built-in camera.</p>
                 <select class="stg-select" id="camera-index">
-                  <option value="0">Camera 0 (Default)</option>
-                  <option value="1">Camera 1</option>
-                  <option value="2">Camera 2</option>
+                  <option value="1" selected>Camera 1 — External Webcam (default)</option>
+                  <option value="0">Camera 0 — Built-in / Default</option>
+                  <option value="2">Camera 2 — Secondary</option>
                 </select>
               </div>
               <div class="stg-field">
@@ -148,10 +148,21 @@
         <section class="stg-section" id="notifications">
           <div class="stg-section-head">
             <h2 class="stg-section-title">Notifications</h2>
-            <p class="stg-section-desc">Control in-app alerts and feedback messages.</p>
+            <p class="stg-section-desc">Control in-app alerts, browser notifications, and feedback messages.</p>
           </div>
           <div class="sc-widget">
             <div class="stg-form">
+              <div class="stg-row">
+                <div class="stg-row-info">
+                  <span class="stg-row-label">Browser Notifications</span>
+                  <span class="stg-row-sub">Show desktop notifications for translation events</span>
+                </div>
+                <label class="stg-toggle">
+                  <input type="checkbox" id="browser-notif-toggle">
+                  <span class="stg-toggle-track"></span>
+                </label>
+              </div>
+              <div id="browser-notif-status" style="display:none;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600"></div>
               <div class="stg-row">
                 <div class="stg-row-info">
                   <span class="stg-row-label">Gesture Committed Alert</span>
@@ -182,6 +193,7 @@
                   <span class="stg-toggle-track"></span>
                 </label>
               </div>
+              <button class="sc-btn sc-btn--primary" id="save-notifications-btn">Save Notification Settings</button>
             </div>
           </div>
         </section>
@@ -313,6 +325,7 @@
     "camera-notif-toggle": "cameraNotif",
     "sfx-toggle": "sfx",
     "save-history-toggle": "saveHistory",
+    "browser-notif-toggle": "browserNotif",
   };
   Object.entries(toggles).forEach(([id, key]) => {
     const el = document.getElementById(id);
@@ -322,6 +335,75 @@
     el.addEventListener("change", () => { savePref(key, el.checked); showToast("Preference saved"); });
   });
 
+  /* ── browser notifications ── */
+  const browserNotifToggle = document.getElementById("browser-notif-toggle");
+  const browserNotifStatus = document.getElementById("browser-notif-status");
+
+  function updateNotifStatus(permission) {
+    if (!browserNotifStatus) return;
+    if (permission === "granted") {
+      browserNotifStatus.style.display = "block";
+      browserNotifStatus.style.background = "rgba(5,150,105,.1)";
+      browserNotifStatus.style.color = "#047857";
+      browserNotifStatus.style.border = "1px solid rgba(5,150,105,.2)";
+      browserNotifStatus.textContent = "✓ Browser notifications are enabled";
+    } else if (permission === "denied") {
+      browserNotifStatus.style.display = "block";
+      browserNotifStatus.style.background = "rgba(220,38,38,.1)";
+      browserNotifStatus.style.color = "#dc2626";
+      browserNotifStatus.style.border = "1px solid rgba(220,38,38,.2)";
+      browserNotifStatus.textContent = "✗ Notifications blocked — please allow in browser settings";
+      if (browserNotifToggle) browserNotifToggle.checked = false;
+    } else {
+      browserNotifStatus.style.display = "none";
+    }
+  }
+
+  if (browserNotifToggle) {
+    // Show current status on load
+    if ("Notification" in window && Notification.permission === "granted") {
+      updateNotifStatus("granted");
+    } else if ("Notification" in window && Notification.permission === "denied") {
+      updateNotifStatus("denied");
+      browserNotifToggle.checked = false;
+    }
+
+    browserNotifToggle.addEventListener("change", async () => {
+      if (!("Notification" in window)) {
+        showToast("Browser notifications not supported", "error");
+        browserNotifToggle.checked = false;
+        return;
+      }
+      if (browserNotifToggle.checked) {
+        try {
+          const permission = await Notification.requestPermission();
+          if (permission === "granted") {
+            savePref("browserNotif", true);
+            updateNotifStatus("granted");
+            // Send a test notification
+            new Notification("SignConnect Notifications Enabled", {
+              body: "You will now receive desktop alerts for translation events.",
+              icon: "/static/img/icon-192.png"
+            });
+            showToast("Browser notifications enabled");
+          } else {
+            savePref("browserNotif", false);
+            browserNotifToggle.checked = false;
+            updateNotifStatus("denied");
+            showToast("Notification permission denied", "error");
+          }
+        } catch (err) {
+          showToast("Could not request notification permission", "error");
+          browserNotifToggle.checked = false;
+        }
+      } else {
+        savePref("browserNotif", false);
+        updateNotifStatus(null);
+        showToast("Browser notifications disabled");
+      }
+    });
+  }
+
   /* ── fps range ── */
   const fpsRange = document.getElementById("fps-range");
   const fpsVal = document.getElementById("fps-val");
@@ -329,9 +411,9 @@
   fpsVal.textContent = fpsRange.value;
   fpsRange.addEventListener("input", () => { fpsVal.textContent = fpsRange.value; });
 
-  /* ── camera index ── */
+  /* ── camera index (default: 1 = external webcam) ── */
   const camIdx = document.getElementById("camera-index");
-  camIdx.value = loadPref("cameraIndex", "0");
+  camIdx.value = loadPref("cameraIndex", "1");
 
   /* ── save buttons ── */
   document.getElementById("save-profile-btn")?.addEventListener("click", () => {
@@ -342,6 +424,10 @@
     savePref("targetFps", fpsRange.value);
     savePref("cameraIndex", camIdx.value);
     showToast("Camera settings saved — restart required");
+  });
+
+  document.getElementById("save-notifications-btn")?.addEventListener("click", () => {
+    showToast("Notification settings saved");
   });
 
   /* ── privacy actions ── */

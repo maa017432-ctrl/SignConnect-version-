@@ -30,7 +30,7 @@
     </div>
     {% endif %}
 
-    <form class="sc-auth-form" method="POST" action="{{ url_for('auth.signup_post') }}" novalidate>
+    <form class="sc-auth-form" method="POST" action="{{ url_for('auth.signup_post') }}" novalidate id="signup-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="sc-form-row">
         <div class="sc-form-group">
@@ -47,8 +47,9 @@
         <input type="email" id="auth-email" name="email" placeholder="you@example.com" required autocomplete="email" class="sc-form-input">
       </div>
       <div class="sc-form-group">
-        <label for="auth-password">Password <span style="color:var(--text-muted);font-size:12px">(min. 8 characters)</span></label>
+        <label for="auth-password">Password <span style="color:var(--text-muted);font-size:11px">(8+ chars, uppercase, lowercase &amp; number)</span></label>
         <input type="password" id="auth-password" name="password" placeholder="••••••••" required minlength="8" autocomplete="new-password" class="sc-form-input">
+        <div id="pw-strength" style="font-size:11px;margin-top:4px"></div>
       </div>
       <button type="submit" class="sc-btn sc-btn--primary sc-auth-submit">Create Account</button>
     </form>
@@ -58,4 +59,59 @@
     </p>
   </div>
 </div>
+
+<script>
+(function () {
+  const pwInput = document.getElementById("auth-password");
+  const pwStrength = document.getElementById("pw-strength");
+  const form = document.getElementById("signup-form");
+  const emailInput = document.getElementById("auth-email");
+
+  function checkStrength(pw) {
+    const checks = [
+      { re: /.{8,}/, label: "8+ characters" },
+      { re: /[A-Z]/, label: "uppercase letter" },
+      { re: /[a-z]/, label: "lowercase letter" },
+      { re: /[0-9]/, label: "number" },
+    ];
+    const missing = checks.filter(c => !c.re.test(pw)).map(c => c.label);
+    return missing;
+  }
+
+  if (pwInput && pwStrength) {
+    pwInput.addEventListener("input", () => {
+      const missing = checkStrength(pwInput.value);
+      if (!pwInput.value) { pwStrength.textContent = ""; return; }
+      if (missing.length === 0) {
+        pwStrength.style.color = "#047857";
+        pwStrength.textContent = "✓ Password meets all requirements";
+      } else {
+        pwStrength.style.color = "#dc2626";
+        pwStrength.textContent = "Missing: " + missing.join(", ");
+      }
+    });
+  }
+
+  if (form && emailInput) {
+    form.addEventListener("submit", (e) => {
+      const emailVal = emailInput.value.trim();
+      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+      if (!emailRe.test(emailVal)) {
+        e.preventDefault();
+        emailInput.focus();
+        emailInput.style.borderColor = "#dc2626";
+        return;
+      }
+      emailInput.style.borderColor = "";
+      if (pwInput) {
+        const missing = checkStrength(pwInput.value);
+        if (missing.length > 0) {
+          e.preventDefault();
+          pwInput.focus();
+        }
+      }
+    });
+  }
+})();
+</script>
 {% endblock %}

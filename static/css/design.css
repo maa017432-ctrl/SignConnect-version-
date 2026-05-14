@@ -1834,70 +1834,124 @@ table audio {
 /* ── LIGHT MODE THEME ── */
 html[data-theme="light"],
 body[data-theme="light"] {
-  --bg-primary: #FFFFFF;
-  --bg-secondary: #F9FAFB;
-  --surface: #F3F4F6;
-  --surface-hover: #E5E7EB;
-  --border: #D1D5DB;
-  --border-soft: #E5E7EB;
+  --bg-primary: #F8FAFC;
+  --bg-secondary: #F1F5F9;
+  --surface: #FFFFFF;
+  --surface-hover: #F3F4F6;
+  --border: #E2E8F0;
+  --border-soft: #F1F5F9;
 
-  --text-primary: #111827;
-  --text-secondary: #6B7280;
-  --text-muted: #9CA3AF;
-  --text-faint: #D1D5DB;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+  --text-faint: #CBD5E1;
 
   --color-primary: #7C3AED;
   --color-primary-hover: #6D28D9;
   --color-primary-light: #8B5CF6;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.12);
 }
 
-/* ── RTL (Right-to-Left) Language Support ── */
-html[dir="rtl"] {
-  direction: rtl;
-  text-align: right;
+/* Proper body background for light mode */
+html[data-theme="light"] body {
+  background: #F8FAFC;
+  color: #0F172A;
 }
 
-html[dir="rtl"] body {
-  direction: rtl;
+/* Navbar in light mode */
+html[data-theme="light"] .site-header {
+  background: #FFFFFF;
+  border-bottom: 1px solid #E2E8F0;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
 }
 
-html[dir="rtl"] .site-header nav {
-  flex-direction: row-reverse;
+html[data-theme="light"] .site-header h1 {
+  color: #0F172A;
 }
 
-html[dir="rtl"] .btn,
-html[dir="rtl"] button {
-  text-align: center;
+html[data-theme="light"] .site-header nav a {
+  color: #475569;
 }
 
-html[dir="rtl"] .settings-row {
-  flex-direction: row-reverse;
+html[data-theme="light"] .site-header nav a:hover,
+html[data-theme="light"] .site-header nav a.active {
+  color: #0F172A;
+  background: rgba(15, 23, 42, 0.05);
 }
 
-html[dir="rtl"] .setting-group {
-  text-align: right;
+html[data-theme="light"] #theme-toggle {
+  background: rgba(15, 23, 42, 0.06);
+  color: #475569;
 }
 
-html[dir="rtl"] .home-feature-grid {
-  direction: rtl;
+html[data-theme="light"] #theme-toggle:hover {
+  background: rgba(15, 23, 42, 0.1);
+  color: #0F172A;
 }
 
-html[dir="rtl"] .dict-card,
-html[dir="rtl"] .home-feature-card {
-  text-align: right;
+/* Cards and surfaces */
+html[data-theme="light"] .info-section {
+  background: #FFFFFF;
+  border-color: #E2E8F0;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
 }
 
-html[dir="rtl"] .controls {
-  flex-direction: row-reverse;
+html[data-theme="light"] .sentence-display {
+  background: #F8FAFC;
+  border-color: #E2E8F0;
+  color: #0F172A;
 }
 
-html[dir="rtl"] .stats-grid {
-  direction: rtl;
+html[data-theme="light"] .recognized-text-large {
+  color: #0F172A;
 }
+
+html[data-theme="light"] .confidence-circle {
+  border-color: #7C3AED;
+  background: rgba(124, 58, 237, 0.06);
+}
+
+html[data-theme="light"] .confidence-value {
+  color: #7C3AED;
+}
+
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+  background: #F8FAFC;
+  color: #0F172A;
+  border-color: #D1D5DB;
+}
+
+html[data-theme="light"] input:focus,
+html[data-theme="light"] select:focus,
+html[data-theme="light"] textarea:focus {
+  background: #FFFFFF;
+  border-color: #7C3AED;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+html[data-theme="light"] .btn-primary {
+  background: #7C3AED;
+  border-color: #7C3AED;
+}
+
+html[data-theme="light"] .btn-secondary {
+  background: #FFFFFF;
+  color: #374151;
+  border-color: #D1D5DB;
+}
+
+html[data-theme="light"] .btn-secondary:hover {
+  background: #F3F4F6;
+  border-color: #9CA3AF;
+}
+
+/* ── RTL support removed — English/US ASL only ── */
+
 
 html[dir="rtl"] .status-bar {
   flex-direction: row-reverse;
