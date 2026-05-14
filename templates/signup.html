@@ -47,11 +47,53 @@
         <input type="email" id="auth-email" name="email" placeholder="you@example.com" required autocomplete="email" class="sc-form-input">
       </div>
       <div class="sc-form-group">
-        <label for="auth-password">Password <span style="color:var(--text-muted);font-size:12px">(min. 10, upper/lower/number/symbol)</span></label>
-        <input type="password" id="auth-password" name="password" placeholder="••••••••" required minlength="10" autocomplete="new-password" class="sc-form-input">
+        <label for="auth-password">Password <span style="color:var(--text-muted);font-size:12px">(min. 8, upper/lower/number)</span></label>
+        <input type="password" id="auth-password" name="password" placeholder="••••••••" required minlength="8" autocomplete="new-password" class="sc-form-input">
+        <span id="pw-error" style="color:#e74c3c;font-size:12px;display:none"></span>
       </div>
       <button type="submit" class="sc-btn sc-btn--primary sc-auth-submit">Create Account</button>
     </form>
+    <script>
+    (function () {
+      var form = document.querySelector('.sc-auth-form');
+      var emailInput = document.getElementById('auth-email');
+      var pwInput = document.getElementById('auth-password');
+      var pwError = document.getElementById('pw-error');
+      var emailRe = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,63}$/;
+
+      function validatePassword(pw) {
+        if (pw.length < 8) return 'Password must be at least 8 characters.';
+        if (!/[A-Z]/.test(pw)) return 'Password must include at least one uppercase letter.';
+        if (!/[a-z]/.test(pw)) return 'Password must include at least one lowercase letter.';
+        if (!/\d/.test(pw)) return 'Password must include at least one number.';
+        return '';
+      }
+
+      pwInput.addEventListener('input', function () {
+        var msg = validatePassword(pwInput.value);
+        pwError.textContent = msg;
+        pwError.style.display = msg ? 'block' : 'none';
+      });
+
+      form.addEventListener('submit', function (e) {
+        var emailVal = emailInput.value.trim();
+        if (!emailRe.test(emailVal)) {
+          e.preventDefault();
+          emailInput.setCustomValidity('Invalid email format');
+          emailInput.reportValidity();
+          return;
+        }
+        emailInput.setCustomValidity('');
+        var pwMsg = validatePassword(pwInput.value);
+        if (pwMsg) {
+          e.preventDefault();
+          pwError.textContent = pwMsg;
+          pwError.style.display = 'block';
+          pwInput.focus();
+        }
+      });
+    })();
+    </script>
 
     <p class="sc-auth-footer-text">
       Already have an account? <a href="{{ url_for('auth.signin_get') }}" class="sc-form-link">Sign in</a>
