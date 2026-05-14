@@ -42,6 +42,7 @@
   const predictionOverlayConfidence = document.getElementById("prediction-overlay-confidence");
   const clearHistoryPageBtn = document.getElementById("clear-history-page-btn");
   const downloadHistoryBtn = document.getElementById("download-history-btn");
+  const SUPPORTED_UI_LANGS = new Set(["en", "asl"]);
 
   /* ── Coaching System Elements ──────────────────────────────── */
   const coachingContainer = document.getElementById("coaching-container");
@@ -119,6 +120,7 @@
   let _prevSentenceWordCount = 0;  // tracks word count to detect new commits
   let _autoSpeakInFlight = false;  // prevents overlapping TTS requests
   let _activeAudio = null;
+  let cameraNotificationSent = false;
 
   function _applyAutoSpeakButton() {
     if (!autoSpeakBtn) return;
@@ -730,7 +732,7 @@
 
   /* ── Settings Management System ────────────────────────────── */
   let settingsState = {
-    camera: "default",
+    camera: "1",
     threshold: 75,
     language: "en",
     training: false,
@@ -740,7 +742,7 @@
 
   const SETTINGS_STORAGE_KEY = "signconnect_settings";
   const DEFAULTS = {
-    camera: "default",
+    camera: "1",
     threshold: 75,
     language: "en",
     training: false,
@@ -1050,6 +1052,12 @@
         const ok = data.camera && data.camera_frame_route !== false;
         cameraStatus.textContent = ok ? "Camera: OK" : "Camera: DOWN";
         setDot(cameraDot, ok ? "ok" : "err");
+        if (ok) {
+          cameraNotificationSent = false;
+        } else if (!cameraNotificationSent) {
+          notifyUser("camera", "Camera unavailable", "Check camera connection and browser permissions.");
+          cameraNotificationSent = true;
+        }
 
         // If camera is definitively down, show a clear message in the overlay
         if (!ok && videoOverlay && !videoOverlay.classList.contains("hidden")) {
@@ -1091,6 +1099,10 @@
     } catch {
       if (cameraStatus) cameraStatus.textContent = "Camera: ERR";
       setDot(cameraDot, "err");
+      if (!cameraNotificationSent) {
+        notifyUser("camera", "Camera error", "SignConnect could not read from the selected camera.");
+        cameraNotificationSent = true;
+      }
     }
   }
 
@@ -1169,6 +1181,9 @@
       const wordCount = sentence.trim().split(/\s+/).length;
       if (autoSpeak && wordCount > _prevSentenceWordCount) {
         _autoSpeakSentence(sentence);
+      }
+      if (wordCount > _prevSentenceWordCount) {
+        notifyUser("gesture", "New translation captured", sentence);
       }
       _prevSentenceWordCount = wordCount;
     } else {
@@ -1271,19 +1286,31 @@
 
   /* ── Language selector ────────────────────────────────────── */
   function getSelectedLang() {
-    if (langSelect) return langSelect.value;
-    return localStorage.getItem("sc_lang") || localStorage.getItem(i18n.STORAGE_KEY) || "en";
+    const lang = langSelect
+      ? langSelect.value
+      : (settingsState.language || localStorage.getItem("sc_lang") || localStorage.getItem(i18n.STORAGE_KEY) || "en");
+    return SUPPORTED_UI_LANGS.has(lang) ? lang : "en";
   }
 
   function initLanguageSelector() {
-    if (!langSelect) return;
+    const normalizeLang = (value) => (SUPPORTED_UI_LANGS.has(value) ? value : "en");
     // Use settings state or fallback to localStorage / i18n
-    const saved = settingsState.language || localStorage.getItem("sc_lang") || localStorage.getItem(i18n.STORAGE_KEY) || "en";
+    const saved = normalizeLang(settingsState.language || localStorage.getItem("sc_lang") || localStorage.getItem(i18n.STORAGE_KEY) || "en");
+    updateSetting("language", saved);
+    localStorage.setItem("sc_lang", saved);
+
+    if (!langSelect) {
+      if (typeof i18n !== "undefined" && i18n.setLanguage) {
+        i18n.setLanguage(saved);
+      }
+      return;
+    }
     langSelect.value = saved;
 
     // Sync settings language select when main language select changes
     langSelect.addEventListener("change", () => {
-      const newLang = langSelect.value;
+      const newLang = normalizeLang(langSelect.value);
+      langSelect.value = newLang;
       updateSetting("language", newLang);
       localStorage.setItem("sc_lang", newLang);
       if (settingsLangSelect) settingsLangSelect.value = newLang;
@@ -1296,7 +1323,8 @@
     // Sync settings language select with main select
     if (settingsLangSelect) {
       settingsLangSelect.addEventListener("change", () => {
-        const newLang = settingsLangSelect.value;
+        const newLang = normalizeLang(settingsLangSelect.value);
+        settingsLangSelect.value = newLang;
         updateSetting("language", newLang);
         localStorage.setItem("sc_lang", newLang);
         if (langSelect) langSelect.value = newLang;
@@ -1315,7 +1343,7 @@
 
     // Listen for language changes from i18n module
     window.addEventListener("languageChanged", (event) => {
-      const newLang = event.detail.lang;
+      const newLang = normalizeLang(event.detail.lang);
       if (langSelect) langSelect.value = newLang;
       if (settingsLangSelect) settingsLangSelect.value = newLang;
       updateSetting("language", newLang);
@@ -1459,9 +1487,11 @@
       const payload = await response.json().catch(() => ({ deleted: 0 }));
       await refreshHistoryPage();
       showToast(`History cleared (${payload.deleted || 0} entries removed).`, "success");
+      notifyUser("system", "History cleared", `${payload.deleted || 0} entries removed`);
       return;
     } catch { /* network error */ }
     showToast("Failed to clear history.", "error");
+    notifyUser("system", "History clear failed", "Could not remove history entries.");
   }
 
   async function downloadHistoryCsv() {
@@ -1685,6 +1715,22 @@
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
   }
 
+  async function applyPreferredCameraFromSettings() {
+    const raw = localStorage.getItem("sc_cameraIndex");
+    const preferred = Number.parseInt(raw || "1", 10);
+    if (Number.isNaN(preferred) || preferred < 0 || preferred > 10) return;
+    try {
+      await fetch("/api/camera", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+        body: new URLSearchParams({ camera_index: String(preferred), csrf_token: getCsrfToken() }).toString(),
+      });
+    } catch (error) {
+      console.warn("Failed to apply preferred camera setting:", error);
+      // non-fatal; stream startup fallback still works
+    }
+  }
+
   function showToast(message, type = "success") {
     if (!message) return;
     let toast = document.getElementById("sc-global-toast");
@@ -1702,6 +1748,42 @@
     showToast._timer = setTimeout(() => {
       toast.classList.remove("sc-toast--show");
     }, 2500);
+  }
+
+  function getBooleanPref(key, fallback = false) {
+    try {
+      const raw = localStorage.getItem(`sc_${key}`);
+      if (raw === null) return fallback;
+      return raw === "true";
+    } catch {
+      return fallback;
+    }
+  }
+
+  function notificationsEnabled(kind) {
+    if (kind === "gesture") return getBooleanPref("gestureNotif", true);
+    if (kind === "camera") return getBooleanPref("cameraNotif", true);
+    return true;
+  }
+
+  function notifyUser(kind, title, body) {
+    if (!notificationsEnabled(kind)) return;
+    if (!("Notification" in window)) return;
+    try {
+      if (Notification.permission === "granted") {
+        new Notification(title, { body, icon: "/static/icons/icon-192.png", silent: false });
+      } else if (Notification.permission === "default") {
+        Notification.requestPermission().then((permission) => {
+          if (permission === "granted") {
+            new Notification(title, { body, icon: "/static/icons/icon-192.png", silent: false });
+          }
+        }).catch((error) => {
+          console.warn("Notification permission request failed:", error);
+        });
+      }
+    } catch (error) {
+      console.warn("Notification delivery failed:", error);
+    }
   }
 
   /** Strip non-word characters so a value is safe as a CSS class name. */
@@ -1748,6 +1830,7 @@
 
   function startStream() {
     paused = false;
+    cameraNotificationSent = false;
     renderState.overlayLabel = "";
     renderState.overlayConfText = "";
     if (streamTimer) clearInterval(streamTimer);
@@ -1797,6 +1880,10 @@
         const msg = videoOverlay.querySelector(".overlay-msg");
         if (msg && msg.textContent.includes("Connecting")) {
           msg.textContent = "Camera failed to connect — check permissions.";
+          if (!cameraNotificationSent) {
+            notifyUser("camera", "Camera failed to connect", "Please confirm camera permission and selected source.");
+            cameraNotificationSent = true;
+          }
           // Add retry button dynamically
           const existing = videoOverlay.querySelector(".overlay-retry");
           if (!existing) {
@@ -1929,11 +2016,13 @@
 
   /* Translator page */
   if (video) {
-    startStream();
-    initSocket();           // WebSocket push; HTTP poll used only as fallback
-    refreshHistorySidebar().catch(() => { });
-    updateConfidence(0);
-    updateProgressBar(0, 15, false);
+    applyPreferredCameraFromSettings().finally(() => {
+      startStream();
+      initSocket();           // WebSocket push; HTTP poll used only as fallback
+      refreshHistorySidebar().catch(() => { });
+      updateConfidence(0);
+      updateProgressBar(0, 15, false);
+    });
   }
 
   /* History page */

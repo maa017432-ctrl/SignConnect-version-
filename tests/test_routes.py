@@ -140,6 +140,7 @@ def test_api_routes(client) -> None:
     assert client.get("/api/history").status_code == 200
     assert client.get("/api/export_history").status_code == 200
     assert client.delete("/api/history").status_code == 200
+    assert client.get("/api/camera").status_code == 200
 
 
 def test_export_history_csv_scopes_rows_to_signed_in_user(client) -> None:
@@ -236,6 +237,18 @@ def test_history_endpoints_support_anonymous_null_user_rows(client) -> None:
     assert remaining == 0
 
 
+def test_set_camera_endpoint_switches_index(client) -> None:
+    camera_manager = client.application.extensions["camera_manager"]
+    original_index = camera_manager.camera_index
+    try:
+        response = client.post("/api/camera", json={"camera_index": 1})
+        assert response.status_code in (200, 503)
+        # Configured preference is updated even if hardware is unavailable in CI.
+        assert camera_manager.camera_index == 1
+    finally:
+        camera_manager.camera_index = original_index
+
+
 def test_api_docs_routes(client) -> None:
     """Swagger UI and OpenAPI spec should be exposed for presentation/demo use."""
     docs_response = client.get("/api/docs")
@@ -313,6 +326,73 @@ def test_csrf_testing_mode_bypass_allows_signin(client) -> None:
     # Response is a rendered page with an error (bad credentials), not a 400.
     assert response.status_code == 200
     assert b"Invalid email or password" in response.data
+
+
+def test_signup_rejects_invalid_email_format(client) -> None:
+    response = client.post(
+        "/signup",
+        data={
+            "first_name": "Invalid",
+            "last_name": "Email",
+            "email": "invalid-email",
+            "password": "StrongPass1!",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 200
+    assert b"valid email address" in response.data
+
+
+def test_signup_rejects_weak_password_policy(client) -> None:
+    response = client.post(
+        "/signup",
+        data={
+            "first_name": "Weak",
+            "last_name": "Password",
+            "email": "weak-pass@example.com",
+            "password": "weakpassword1!",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 200
+    assert b"uppercase letter" in response.data
+
+
+def test_signup_rejects_duplicate_account(client) -> None:
+    from database.db import get_connection
+    from werkzeug.security import generate_password_hash
+
+    db_path = client.application.config["DATABASE_PATH"]
+    email = "duplicate-account@example.com"
+    with get_connection(db_path) as connection:
+        connection.execute("DELETE FROM users WHERE email = ?", (email,))
+        connection.execute(
+            "INSERT INTO users (email, password_hash, full_name) VALUES (?, ?, ?)",
+            (email, generate_password_hash("StrongPass1!"), "Duplicate User"),
+        )
+
+    response = client.post(
+        "/signup",
+        data={
+            "first_name": "Duplicate",
+            "last_name": "User",
+            "email": email,
+            "password": "StrongPass1!",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 200
+    assert b"already exists" in response.data
+
+
+def test_signin_rejects_invalid_email_format(client) -> None:
+    response = client.post(
+        "/signin",
+        data={"email": "bad-email", "password": "StrongPass1!"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 200
+    assert b"valid email address" in response.data
 
 
 def test_csrf_missing_token_rejected_outside_testing(client_no_testing) -> None:

@@ -67,13 +67,13 @@ class TestApiTranslate:
         body = res.get_json()
         assert body is not None
 
-    def test_translate_with_language_param(self, client, app) -> None:
-        """Lang param should be accepted and passed along without error."""
+    def test_translate_with_asl_language_param(self, client, app) -> None:
+        """ASL language value should be accepted and mapped to spoken English TTS."""
         tts = app.extensions["tts_engine"]
         with patch.object(tts, "synthesize", return_value="test_file.mp3") as mock_syn:
             res = client.post(
                 "/api/translate",
-                json={"text": "Bonjour", "lang": "fr"},
+                json={"text": "Hello", "lang": "asl"},
             )
         # If synthesis returned a filename the route should 200-OK
         if res.status_code == 200:
@@ -82,7 +82,15 @@ class TestApiTranslate:
         # Verify lang was forwarded (may be skipped when TTS actually ran)
         if mock_syn.called:
             _, kwargs = mock_syn.call_args
-            assert kwargs.get("lang") == "fr"
+            assert kwargs.get("lang") == "en"
+
+    def test_translate_unsupported_language_falls_back_to_english(self, client, app) -> None:
+        tts = app.extensions["tts_engine"]
+        with patch.object(tts, "synthesize", return_value="test_file.mp3") as mock_syn:
+            client.post("/api/translate", json={"text": "Hola", "lang": "es"})
+        if mock_syn.called:
+            _, kwargs = mock_syn.call_args
+            assert kwargs.get("lang") == "en"
 
     def test_happy_path_returns_audio_url(self, client, app) -> None:
         tts = app.extensions["tts_engine"]
@@ -127,13 +135,21 @@ class TestApiTts:
         assert "audio_url" in body
         assert body["audio_url"].endswith("tts_abc123.mp3")
 
-    def test_lang_param_forwarded(self, client, app) -> None:
+    def test_lang_param_forwarded_for_asl(self, client, app) -> None:
         tts = app.extensions["tts_engine"]
-        with patch.object(tts, "synthesize", return_value="tts_fr.mp3") as mock_syn:
-            res = client.post("/api/tts", json={"text": "Bonjour", "lang": "fr"})
+        with patch.object(tts, "synthesize", return_value="tts_asl.mp3") as mock_syn:
+            res = client.post("/api/tts", json={"text": "Hello", "lang": "asl"})
         if res.status_code == 200 and mock_syn.called:
             _, kwargs = mock_syn.call_args
-            assert kwargs.get("lang") == "fr"
+            assert kwargs.get("lang") == "en"
+
+    def test_tts_unsupported_language_falls_back_to_english(self, client, app) -> None:
+        tts = app.extensions["tts_engine"]
+        with patch.object(tts, "synthesize", return_value="tts_en.mp3") as mock_syn:
+            client.post("/api/tts", json={"text": "Hola", "lang": "es"})
+        if mock_syn.called:
+            _, kwargs = mock_syn.call_args
+            assert kwargs.get("lang") == "en"
 
     def test_does_not_write_to_database(self, client, app) -> None:
         """Unlike /api/translate, /api/tts must not insert a history row."""
