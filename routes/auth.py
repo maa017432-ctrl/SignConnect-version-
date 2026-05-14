@@ -25,7 +25,7 @@ LOGGER = logging.getLogger(__name__)
 auth_bp = Blueprint("auth", __name__)
 
 _EMAIL_RE = re.compile(r"^(?!.*\.\.)[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,63}$")
-_PASSWORD_MIN_LENGTH = 10
+_PASSWORD_MIN_LENGTH = 8
 _PASSWORD_MAX_LENGTH = 128
 _NAME_MAX_LENGTH = 80
 _EMAIL_MAX_LENGTH = 254
@@ -71,8 +71,6 @@ def _password_strength_error(password: str) -> str | None:
         return "Password must include at least one lowercase letter."
     if not re.search(r"\d", password):
         return "Password must include at least one number."
-    if not re.search(r"[^A-Za-z0-9]", password):
-        return "Password must include at least one special character."
     return None
 
 

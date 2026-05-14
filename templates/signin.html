@@ -42,6 +42,35 @@
       </div>
       <button type="submit" class="sc-btn sc-btn--primary sc-auth-submit">Sign In</button>
     </form>
+    <script>
+    (function () {
+      var form = document.querySelector('.sc-auth-form');
+      var emailInput = document.getElementById('auth-email');
+      var pwInput = document.getElementById('auth-password');
+      var emailRe = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,63}$/;
+
+      form.addEventListener('submit', function (e) {
+        if (!emailInput.value.trim() || !pwInput.value) {
+          e.preventDefault();
+          var target = !emailInput.value.trim() ? emailInput : pwInput;
+          target.setCustomValidity('This field is required.');
+          target.reportValidity();
+          return;
+        }
+        emailInput.setCustomValidity('');
+        pwInput.setCustomValidity('');
+        if (!emailRe.test(emailInput.value.trim())) {
+          e.preventDefault();
+          emailInput.setCustomValidity('Invalid email format');
+          emailInput.reportValidity();
+        }
+      });
+
+      [emailInput, pwInput].forEach(function (el) {
+        el.addEventListener('input', function () { el.setCustomValidity(''); });
+      });
+    })();
+    </script>
 
     <p class="sc-auth-footer-text">
       Don't have an account? <a href="{{ url_for('auth.signup_get') }}" class="sc-form-link">Create one</a>
