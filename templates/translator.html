@@ -18,10 +18,6 @@
         </h1>
         <p class="sc-page-subtitle">Real-time ASL to English translation</p>
       </div>
-      <div class="sc-page-actions">
-        <button class="sc-icon-btn" title="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
-        <button class="sc-icon-btn" title="Fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
-      </div>
     </div>
 
     {% if demo_mode %}
@@ -48,6 +44,10 @@
           <div class="video-wrapper">
             <img id="video-stream" src="" alt="Live sign language feed" width="640" height="480" decoding="async"
               data-mjpeg-url="{{ url_for('stream.video_feed') }}" data-frame-url="{{ url_for('api.api_camera_frame') }}">
+            <div id="prediction-overlay" class="sc-prediction-overlay sc-prediction-overlay--hidden" aria-live="polite">
+              <span id="prediction-overlay-label" class="sc-prediction-overlay-label">—</span>
+              <span id="prediction-overlay-confidence" class="sc-prediction-overlay-confidence">0.00%</span>
+            </div>
             <div id="video-overlay" class="video-overlay">
               <div class="sc-camera-off-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16.5 9.4l-2-1.74"/><path d="M2 2l20 20"/><path d="M21.43 15.97V8a2 2 0 0 0-2-2h-2.09"/><path d="M10.91 6H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14"/></svg>
@@ -92,6 +92,12 @@
           </div>
           <div id="upload-video-status" style="margin-top:10px;color:var(--text-secondary);font-size:13px;min-height:20px"></div>
           <progress id="upload-video-progress" value="0" max="100" style="width:100%;margin-top:6px;height:8px;display:none"></progress>
+          <div id="coaching-container" class="coaching-container hidden" aria-live="polite">
+            <div id="coaching-message" class="coaching-message info">
+              <span id="coaching-icon" class="coaching-icon">ℹ️</span>
+              <span id="coaching-text" class="coaching-text">Center your hand</span>
+            </div>
+          </div>
           <!-- Hidden start-btn kept for JS compatibility -->
           <div style="display:none">
             <button id="start-btn" class="sc-btn sc-btn--primary sc-btn--translate" type="button">
@@ -138,7 +144,7 @@
         <!-- Quick Settings Widget -->
         <div class="sc-widget sc-widget--dark sc-reveal" data-delay="300">
           <div class="sc-widget-header">
-            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-widget-icon"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Quick Settings</h3>
+            <h3>Quick Settings</h3>
           </div>
           <div class="sc-widget-body">
             <div class="sc-setting-row">

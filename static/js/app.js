@@ -37,6 +37,11 @@
   const topkPanel = document.getElementById("topk-panel");
   const topkList = document.getElementById("topk-list");
   const confidenceFill = document.getElementById("confidence-bar-fill");
+  const predictionOverlay = document.getElementById("prediction-overlay");
+  const predictionOverlayLabel = document.getElementById("prediction-overlay-label");
+  const predictionOverlayConfidence = document.getElementById("prediction-overlay-confidence");
+  const clearHistoryPageBtn = document.getElementById("clear-history-page-btn");
+  const downloadHistoryBtn = document.getElementById("download-history-btn");
 
   /* ── Coaching System Elements ──────────────────────────────── */
   const coachingContainer = document.getElementById("coaching-container");
@@ -98,6 +103,15 @@
   let blobUrl = null;
   let prevFrameAt = 0;
   let fpsWindow = [];   // sliding window of frame intervals (ms)
+  let renderState = {
+    label: "",
+    confidencePct: -1,
+    sentence: "",
+    progressWidth: "",
+    topCandidatesKey: "",
+    overlayLabel: "",
+    overlayConfText: "",
+  };
 
   /* ── Auto-speak ────────────────────────────────────────────── */
   const AUTO_SPEAK_STORAGE_KEY = "signconnect_auto_speak";
@@ -185,7 +199,7 @@
     no_hand: {
       state: "error",
       icon: "❌",
-      text: "Move your hand into the frame",
+      text: "Hand not detected",
       priority: 1,
     },
     low_confidence: {
@@ -203,13 +217,13 @@
     adjust_distance: {
       state: "warning",
       icon: "⚠️",
-      text: "Adjust distance from camera",
+      text: "Move hand closer",
       priority: 2,
     },
     hold_steady: {
       state: "warning",
       icon: "⚠️",
-      text: "Hold gesture steady",
+      text: "Hold steady",
       priority: 2,
     },
     unstable: {
@@ -227,7 +241,7 @@
     good_detection: {
       state: "success",
       icon: "✅",
-      text: "Good detection!",
+      text: "Good position",
       priority: 4,
     },
     gesture_captured: {
@@ -245,6 +259,15 @@
     // If paused or no data, hide coaching
     if (paused || !data) {
       return null;
+    }
+
+    if (data.coaching && typeof data.coaching === "object") {
+      const coaching = data.coaching;
+      return {
+        state: coaching.state || "info",
+        icon: coaching.state === "error" ? "❌" : coaching.state === "success" ? "✅" : coaching.state === "warning" ? "⚠️" : "ℹ️",
+        text: coaching.message || "Center your hand",
+      };
     }
 
     const label = data.smoothed_label || data.label;
@@ -946,9 +969,6 @@
       });
     }
 
-    // Keep polling as a reliable fallback. Waitress can serve the app, but
-    // SocketIO push may be unavailable depending on the local server path.
-    startPredictionPoll();
   }
 
   function stopPredictionPoll() {
@@ -1088,8 +1108,15 @@
   function updatePredictionUI(data) {
     if (paused) return;
     const display = data.smoothed_label || data.label;
-    if (recognizedText) recognizedText.textContent = display || "—";
+    if (recognizedText) {
+      const nextLabel = display || "—";
+      if (renderState.label !== nextLabel) {
+        recognizedText.textContent = nextLabel;
+        renderState.label = nextLabel;
+      }
+    }
     updateConfidence(display ? data.confidence : 0);
+    updateVideoPredictionOverlay(display, data.confidence);
     updateSentenceDisplay(data.sentence || "");
     updateProgressBar(data.current_run, data.stable_frames, data.is_cooling_down);
     updateTopCandidates(data.top_candidates || []);
@@ -1099,6 +1126,9 @@
 
   function updateTopCandidates(candidates) {
     if (!topkList) return;
+    const key = JSON.stringify((Array.isArray(candidates) ? candidates : []).slice(0, 3));
+    if (renderState.topCandidatesKey === key) return;
+    renderState.topCandidatesKey = key;
     topkList.innerHTML = "";
     if (!Array.isArray(candidates) || candidates.length === 0) {
       const li = document.createElement("li");
@@ -1131,7 +1161,9 @@
   function updateSentenceDisplay(sentence) {
     if (!sentenceDisplay) return;
     if (sentence) {
+      if (renderState.sentence === sentence) return;
       sentenceDisplay.textContent = sentence;
+      renderState.sentence = sentence;
       sentenceDisplay.classList.add("has-content");
       // Auto-speak: fire when the sentence has grown by at least one word.
       const wordCount = sentence.trim().split(/\s+/).length;
@@ -1140,8 +1172,10 @@
       }
       _prevSentenceWordCount = wordCount;
     } else {
+      if (renderState.sentence === "") return;
       sentenceDisplay.textContent = "…";
       sentenceDisplay.classList.remove("has-content");
+      renderState.sentence = "";
       _prevSentenceWordCount = 0;
     }
   }
@@ -1151,7 +1185,10 @@
     if (!commitProgress) return;
 
     if (coolingDown) {
-      commitProgress.style.width = "100%";
+      if (renderState.progressWidth !== "100%") {
+        commitProgress.style.width = "100%";
+        renderState.progressWidth = "100%";
+      }
       commitProgress.classList.add("cooling");
       if (progressHint) progressHint.textContent = "Word committed! Lower hand to continue.";
       return;
@@ -1162,7 +1199,11 @@
     const fraction = stableFrames > 0
       ? Math.min(1, (currentRun || 0) / stableFrames)
       : 0;
-    commitProgress.style.width = `${Math.round(fraction * 100)}%`;
+    const nextWidth = `${Math.round(fraction * 100)}%`;
+    if (renderState.progressWidth !== nextWidth) {
+      commitProgress.style.width = nextWidth;
+      renderState.progressWidth = nextWidth;
+    }
 
     if (progressHint) {
       if (fraction === 0) {
@@ -1176,9 +1217,21 @@
     }
   }
 
+  function formatConfidencePercent(raw, fraction = true) {
+    const baseValue = fraction ? Number(raw || 0) * 100 : Number(raw || 0);
+    const rounded = Math.max(0, Math.min(100, Math.round(baseValue * 100) / 100));
+    return {
+      numeric: rounded,
+      text: `${rounded.toFixed(2)}%`,
+    };
+  }
+
   /* ── Confidence badge ─────────────────────────────────────── */
   function updateConfidence(raw) {
-    const pct = Math.round((raw || 0) * 100);
+    const formatted = formatConfidencePercent(raw, true);
+    const pct = formatted.numeric;
+    if (pct === renderState.confidencePct) return;
+    renderState.confidencePct = pct;
 
     // Update old badge if it exists (for backward compatibility)
     if (confidenceBadge) {
@@ -1190,11 +1243,30 @@
     // Update new confidence circle value if it exists
     const confidenceValue = document.getElementById("confidence-value");
     if (confidenceValue) {
-      confidenceValue.textContent = `${pct}%`;
+      confidenceValue.textContent = formatted.text;
     }
     if (confidenceFill) {
       confidenceFill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
     }
+  }
+
+  function updateVideoPredictionOverlay(label, confidence) {
+    if (!predictionOverlay || !predictionOverlayLabel || !predictionOverlayConfidence) return;
+    const cleanLabel = label && label !== "Unknown" ? String(label).toUpperCase() : "—";
+    const confText = formatConfidencePercent(confidence, true).text;
+    if (cleanLabel === "—") {
+      predictionOverlay.classList.add("sc-prediction-overlay--hidden");
+      return;
+    }
+    if (renderState.overlayLabel !== cleanLabel) {
+      predictionOverlayLabel.textContent = cleanLabel;
+      renderState.overlayLabel = cleanLabel;
+    }
+    if (renderState.overlayConfText !== confText) {
+      predictionOverlayConfidence.textContent = confText;
+      renderState.overlayConfText = confText;
+    }
+    predictionOverlay.classList.remove("sc-prediction-overlay--hidden");
   }
 
   /* ── Language selector ────────────────────────────────────── */
@@ -1376,13 +1448,51 @@
   /* ── Clear history (history page) ────────────────────────── */
   async function clearHistory() {
     try {
-      await fetch("/api/history", {
+      const response = await fetch("/api/history", {
         method: "DELETE",
         headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
         body: new URLSearchParams({ csrf_token: getCsrfToken() }).toString(),
       });
+      if (!response.ok) {
+        throw new Error(`Failed with status ${response.status}`);
+      }
+      const payload = await response.json().catch(() => ({ deleted: 0 }));
+      await refreshHistoryPage();
+      showToast(`History cleared (${payload.deleted || 0} entries removed).`, "success");
+      return;
     } catch { /* network error */ }
-    refreshHistoryPage();
+    showToast("Failed to clear history.", "error");
+  }
+
+  async function downloadHistoryCsv() {
+    if (!downloadHistoryBtn) return;
+    const initialText = downloadHistoryBtn.textContent;
+    downloadHistoryBtn.disabled = true;
+    downloadHistoryBtn.textContent = "⏳ Preparing…";
+    try {
+      const response = await fetch("/api/export_history", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Failed with status ${response.status}`);
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const disposition = response.headers.get("Content-Disposition") || "";
+      const nameMatch = disposition.match(/filename=([^;]+)/i);
+      const filename = (nameMatch ? nameMatch[1] : "signconnect_history.csv").replace(/"/g, "");
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      showToast("History CSV downloaded.", "success");
+    } catch {
+      showToast("Failed to download CSV.", "error");
+    } finally {
+      downloadHistoryBtn.disabled = false;
+      downloadHistoryBtn.textContent = initialText || "⬇ Download History CSV";
+    }
   }
 
   function setUploadStatus(message, isError = false) {
@@ -1508,26 +1618,59 @@
       tbody.innerHTML = "";
       if (data.length === 0) {
         tbody.innerHTML =
-          '<tr><td colspan="4" class="history-empty">No history yet.</td></tr>';
+          '<tr><td colspan="4" class="sc-empty-state"><p>No translation history yet.</p></td></tr>';
+        updateHistorySummary(data);
         return;
       }
       data.forEach((item) => {
         const tr = document.createElement("tr");
-        const audio = item.audio_file
-          ? `<audio src="/static/audio/${escHtml(item.audio_file)}" controls preload="none"></audio>`
+        const audio = item.audio_path
+          ? `<audio src="${escHtml(item.audio_path)}" controls preload="none" class="sc-audio"></audio>`
           : "—";
+        const confidenceText = item.confidence != null
+          ? formatConfidencePercent(item.confidence, true).text
+          : "—";
+        const relative = formatRelativeTime(item.created_at);
         tr.innerHTML = `
-          <td>${escHtml(item.gesture_label)}</td>
-          <td>${item.confidence != null
-            ? (item.confidence * 100).toFixed(1) + "%"
-            : "—"
-          }</td>
+          <td><span class="sc-gesture-tag">${escHtml(item.gesture_label)}</span></td>
+          <td>${confidenceText}</td>
           <td>${audio}</td>
-          <td>${item.created_at ? item.created_at.slice(0, 16) : "—"}</td>
+          <td><span class="sc-muted">${escHtml(relative)}</span></td>
         `;
         tbody.appendChild(tr);
       });
+      updateHistorySummary(data);
     } catch { /* ignore */ }
+  }
+
+  function formatRelativeTime(rawTimestamp) {
+    if (!rawTimestamp) return "—";
+    try {
+      const date = new Date(String(rawTimestamp).replace(" ", "T") + "Z");
+      const diffSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
+      if (diffSeconds < 60) return "Just now";
+      if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m ago`;
+      if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)}h ago`;
+      return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    } catch {
+      return String(rawTimestamp);
+    }
+  }
+
+  function updateHistorySummary(rows) {
+    const cardValues = document.querySelectorAll(".sc-history-sidebar .sc-stat-mini-val");
+    if (!cardValues || cardValues.length < 3) return;
+    const total = rows.length;
+    const withAudio = rows.filter((row) => Boolean(row.audio_path || row.audio_file)).length;
+    const confRows = rows.filter((row) => row.confidence != null);
+    const avgConf = confRows.length
+      ? (confRows.reduce((sum, row) => sum + Number(row.confidence || 0), 0) / confRows.length) * 100
+      : 0;
+    cardValues[0].textContent = String(total);
+    cardValues[1].textContent = formatConfidencePercent(avgConf, false).text;
+    cardValues[2].textContent = String(withAudio);
+    const badge = document.querySelector(".sc-history-main .sc-badge");
+    if (badge) badge.textContent = `${total} entries`;
   }
 
   function escHtml(str) {
@@ -1540,6 +1683,25 @@
 
   function getCsrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+  }
+
+  function showToast(message, type = "success") {
+    if (!message) return;
+    let toast = document.getElementById("sc-global-toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "sc-global-toast";
+      toast.className = "sc-toast";
+      toast.setAttribute("role", "status");
+      toast.setAttribute("aria-live", "polite");
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.className = `sc-toast sc-toast--show ${type === "error" ? "sc-toast--error" : "sc-toast--success"}`;
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(() => {
+      toast.classList.remove("sc-toast--show");
+    }, 2500);
   }
 
   /** Strip non-word characters so a value is safe as a CSS class name. */
@@ -1586,6 +1748,8 @@
 
   function startStream() {
     paused = false;
+    renderState.overlayLabel = "";
+    renderState.overlayConfText = "";
     if (streamTimer) clearInterval(streamTimer);
     streamTimer = null;
 
@@ -1669,6 +1833,7 @@
     if (liveBadge) liveBadge.style.display = "none";
     updateFpsDisplay();
     resetCoachingState();
+    if (predictionOverlay) predictionOverlay.classList.add("sc-prediction-overlay--hidden");
     if (sessionStats.durationTimer) clearInterval(sessionStats.durationTimer);
   }
 
@@ -1685,6 +1850,11 @@
     if (clearBtn) clearBtn.addEventListener("click", clearSentence);
     if (refreshHistBtn) refreshHistBtn.addEventListener("click", refreshHistoryPage);
     if (clearHistBtn) clearHistBtn.addEventListener("click", clearHistory);
+    if (clearHistoryPageBtn) clearHistoryPageBtn.addEventListener("click", () => {
+      if (!confirm("Clear all translation history? This cannot be undone.")) return;
+      clearHistory();
+    });
+    if (downloadHistoryBtn) downloadHistoryBtn.addEventListener("click", downloadHistoryCsv);
     if (uploadVideoBtn && uploadVideoInput) {
       uploadVideoBtn.addEventListener("click", () => uploadVideoInput.click());
       uploadVideoInput.addEventListener("change", () => {

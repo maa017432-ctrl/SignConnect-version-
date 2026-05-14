@@ -189,10 +189,10 @@ def test_export_history_csv_scopes_rows_to_signed_in_user(client) -> None:
     content_disposition = response.headers.get("Content-Disposition", "")
     assert content_disposition.startswith("attachment; filename=signconnect_history_")
     assert content_disposition.endswith(".csv")
-    assert body.startswith("gesture_label,confidence,audio_file,created_at")
-    assert "Hello,0.91,hello.mp3," in body
-    assert "Thanks,0.83,thanks.mp3," in body
-    assert "Private,0.77,private.mp3," not in body
+    assert body.startswith("label,confidence,timestamp,audio_path")
+    assert "Hello,91.00%," in body
+    assert "Thanks,83.00%," in body
+    assert "Private,77.00%," not in body
 
 
 def test_history_page_includes_download_history_csv_button(client) -> None:
@@ -224,7 +224,7 @@ def test_history_endpoints_support_anonymous_null_user_rows(client) -> None:
     export_response = client.get("/api/export_history")
     csv_body = export_response.get_data(as_text=True)
     assert export_response.status_code == 200
-    assert "Guest Hello,0.73,guest-hello.mp3," in csv_body
+    assert "Guest Hello,73.00%," in csv_body
 
     clear_response = client.delete("/api/history")
     assert clear_response.status_code == 200

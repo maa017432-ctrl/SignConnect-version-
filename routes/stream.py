@@ -6,6 +6,7 @@ import logging
 import os
 import threading
 import time
+from collections import deque
 from io import BytesIO
 from typing import Any, Iterator
 
@@ -28,6 +29,12 @@ _CAMERA_RETRY_INTERVAL_S = 5.0
 _JPEG_QUALITY = max(0, min(100, int(os.environ.get("MJPEG_JPEG_QUALITY", "75"))))  # clamped 0-100
 _TARGET_FPS = 30
 _prediction_lock = threading.Lock()
+_coaching_lock = threading.Lock()
+_coaching_centroids: deque[tuple[float, float]] = deque(maxlen=8)
+_COACHING_EDGE_MARGIN = 0.03
+_COACHING_TOO_FAR_AREA = 0.025
+_COACHING_TOO_CLOSE_AREA = 0.45
+_COACHING_SHAKE_DELTA = 0.035
 
 
 def _placeholder_frame(text: str = "") -> bytes:
@@ -61,6 +68,84 @@ def _emit_prediction(app: Any, payload: dict[str, object]) -> None:
         sio.emit("prediction", payload)
     except Exception:
         LOGGER.debug("SocketIO emit failed", exc_info=True)
+
+
+def _infer_coaching(landmarks: np.ndarray | None) -> dict[str, object]:
+    """Infer live coaching feedback from normalized landmark coverage and motion."""
+    if landmarks is None:
+        with _coaching_lock:
+            _coaching_centroids.clear()
+        return {
+            "state": "error",
+            "issue": "missing",
+            "message": "Hand not detected",
+        }
+
+    points = np.asarray(landmarks, dtype=np.float32).reshape(-1, 3)
+    valid = points[np.any(np.abs(points) > 1e-6, axis=1)]
+    if valid.shape[0] < 6:
+        with _coaching_lock:
+            _coaching_centroids.clear()
+        return {
+            "state": "error",
+            "issue": "missing",
+            "message": "Hand not detected",
+        }
+
+    xy = valid[:, :2]
+    min_x, min_y = float(np.min(xy[:, 0])), float(np.min(xy[:, 1]))
+    max_x, max_y = float(np.max(xy[:, 0])), float(np.max(xy[:, 1]))
+    width = max(0.0, max_x - min_x)
+    height = max(0.0, max_y - min_y)
+    area = width * height
+    center_x = (min_x + max_x) * 0.5
+    center_y = (min_y + max_y) * 0.5
+
+    with _coaching_lock:
+        _coaching_centroids.append((center_x, center_y))
+        shaky = False
+        if len(_coaching_centroids) >= 4:
+            deltas = []
+            for idx in range(1, len(_coaching_centroids)):
+                prev = _coaching_centroids[idx - 1]
+                curr = _coaching_centroids[idx]
+                deltas.append(((curr[0] - prev[0]) ** 2 + (curr[1] - prev[1]) ** 2) ** 0.5)
+            shaky = (sum(deltas) / len(deltas)) > _COACHING_SHAKE_DELTA
+
+    if (
+        min_x <= _COACHING_EDGE_MARGIN
+        or min_y <= _COACHING_EDGE_MARGIN
+        or max_x >= (1.0 - _COACHING_EDGE_MARGIN)
+        or max_y >= (1.0 - _COACHING_EDGE_MARGIN)
+    ):
+        return {
+            "state": "warning",
+            "issue": "outside_frame",
+            "message": "Center your hand",
+        }
+    if area <= _COACHING_TOO_FAR_AREA:
+        return {
+            "state": "warning",
+            "issue": "too_far",
+            "message": "Move hand closer",
+        }
+    if area >= _COACHING_TOO_CLOSE_AREA:
+        return {
+            "state": "warning",
+            "issue": "too_close",
+            "message": "Move hand farther",
+        }
+    if shaky:
+        return {
+            "state": "warning",
+            "issue": "unstable",
+            "message": "Hold steady",
+        }
+    return {
+        "state": "success",
+        "issue": "good",
+        "message": "Good position",
+    }
 
 
 def _annotate_and_encode_jpeg(app: Any, frame: np.ndarray) -> bytes | None:
@@ -109,31 +194,14 @@ def _annotate_and_encode_jpeg(app: Any, frame: np.ndarray) -> bytes | None:
         if sentence_builder is not None:
             sentence_builder.update(smoothed_label)
 
-        display_label = smoothed_label or raw_label
-        if display_label and landmarks is not None:
-            cv2.putText(
-                annotated,
-                f"{display_label} ({raw_confidence:.2f})",
-                (10, 40),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1.0,
-                (40, 220, 40) if smoothed_label else (180, 180, 60),
-                2,
-            )
-
-        if sentence_builder is not None and sentence_builder.current_label:
-            progress = min(
-                1.0, sentence_builder.current_run / sentence_builder.stable_frames
-            )
-            bar_w = int(annotated.shape[1] * progress)
-            h = annotated.shape[0]
-            cv2.rectangle(annotated, (0, h - 6), (bar_w, h), (40, 220, 40), -1)
+        coaching = _infer_coaching(landmarks)
 
         prediction_payload = {
             "label": raw_label,
             "confidence": float(raw_confidence),
             "smoothed_label": smoothed_label,
             "top_candidates": top_candidates,
+            "coaching": coaching,
             "sentence": sentence_builder.sentence if sentence_builder else "",
             "current_run": sentence_builder.current_run if sentence_builder else 0,
             "stable_frames": sentence_builder.stable_frames if sentence_builder else 15,
@@ -142,11 +210,17 @@ def _annotate_and_encode_jpeg(app: Any, frame: np.ndarray) -> bytes | None:
             "inference_ms": float(inference_ms) if inference_ms is not None else None,
         }
         with _prediction_lock:
+            existing_payload = dict(app.extensions.get("latest_prediction") or {})
+            last_valid_confidence = float(existing_payload.get("last_valid_confidence") or 0.0)
+            if raw_label and raw_confidence > 0.0:
+                last_valid_confidence = float(raw_confidence)
             app.extensions["latest_prediction"] = {
                 "label": raw_label,
                 "confidence": float(raw_confidence),
+                "last_valid_confidence": last_valid_confidence,
                 "smoothed_label": smoothed_label,
                 "top_candidates": list(top_candidates),
+                "coaching": coaching,
                 "model_type": getattr(classifier, "model_type", "unknown"),
                 "inference_ms": float(inference_ms) if inference_ms is not None else None,
             }
@@ -210,6 +284,7 @@ def _generate_frames(app: Any) -> Iterator[bytes]:
                 time.sleep(0.2)
 
         while True:
+            loop_started = time.perf_counter()
             frame = camera_manager.get_frame()
             if frame is None or cv2 is None:
                 yield _mjpeg_chunk(_placeholder_frame("Waiting for Camera"))
@@ -222,7 +297,10 @@ def _generate_frames(app: Any) -> Iterator[bytes]:
                 time.sleep(0.05)
                 continue
             yield _mjpeg_chunk(jpeg)
-            time.sleep(1.0 / _TARGET_FPS)
+            elapsed = time.perf_counter() - loop_started
+            remaining = max(0.0, (1.0 / _TARGET_FPS) - elapsed)
+            if remaining > 0.0:
+                time.sleep(remaining)
 
 
 def camera_frame_response() -> Response:

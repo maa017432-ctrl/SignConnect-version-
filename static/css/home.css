@@ -211,6 +211,7 @@
 
 /* ── FOOTER ── */
 .sc-footer{background:#050816;border-top:1px solid rgba(255,255,255,.05);padding:24px 0}
+.sc-footer:empty{display:none}
 .sc-footer-inner{max-width:1600px;margin:0 auto;padding:0 24px;display:flex;flex-direction:column;align-items:center;gap:12px}
 @media(min-width:768px){.sc-footer-inner{flex-direction:row;justify-content:space-between}}
 .sc-footer-status{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:#64748b}
@@ -241,7 +242,7 @@ html[data-theme="light"] .sc-navbar{
   border-bottom:1px solid rgba(0,0,0,.08)
 }
 html[data-theme="light"] .sc-logo-link{color:#0f172a}
-html[data-theme="light"] .sc-nav-link{color:rgba(15,23,42,.55)}
+html[data-theme="light"] .sc-nav-link{color:rgba(15,23,42,.74)}
 html[data-theme="light"] .sc-nav-link:hover{color:#0f172a;background:rgba(0,0,0,.05)}
 html[data-theme="light"] .sc-nav-link.active{color:#7c3aed;background:rgba(139,92,246,.08)}
 html[data-theme="light"] .sc-theme-toggle{color:rgba(15,23,42,.5)}
