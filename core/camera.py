@@ -53,13 +53,11 @@ class CameraManager:
 
     def _probe_order(self, preferred_index: Optional[int]) -> list[int]:
         indices = list(self._INDICES)
-        if preferred_index is None:
+        if preferred_index is None or preferred_index < 0:
             return indices
         if preferred_index in indices:
             return [preferred_index] + [idx for idx in indices if idx != preferred_index]
-        if preferred_index >= 0:
-            return [preferred_index] + indices
-        return indices
+        return [preferred_index] + indices
 
     def _try_open_camera(
         self, preferred_index: Optional[int] = None
@@ -160,7 +158,6 @@ class CameraManager:
             self._active_camera_index = None
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=0.5)
-        LOGGER.info("Camera capture stopped")
 
     def set_camera_index(self, camera_index: int) -> None:
         """Apply a new preferred camera index and restart capture if needed."""
@@ -170,13 +167,23 @@ class CameraManager:
             raise CameraUnavailableError("Invalid camera index") from error
 
         was_streaming = self.is_streaming
+        previous_index = self.camera_index
         self.camera_index = normalized_index
         self._hw_probe_cache = None
         self._hw_probe_time = 0.0
 
-        if was_streaming:
-            self.stop()
+        if not was_streaming:
+            return
+
+        self.stop()
+        try:
             self.start()
+        except CameraUnavailableError:
+            self.camera_index = previous_index
+            self._hw_probe_cache = None
+            self._hw_probe_time = 0.0
+            self.start()
+            raise
 
     def get_frame(self) -> Optional[np.ndarray]:
         """Return a copy of the latest frame if available."""

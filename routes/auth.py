@@ -24,16 +24,38 @@ from flask import current_app
 LOGGER = logging.getLogger(__name__)
 auth_bp = Blueprint("auth", __name__)
 
-_EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,63}$")
+_EMAIL_RE = re.compile(r"^(?!.*\.\.)[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,63}$")
 _PASSWORD_MIN_LENGTH = 10
 _PASSWORD_MAX_LENGTH = 128
 _NAME_MAX_LENGTH = 80
 _EMAIL_MAX_LENGTH = 254
 
 
+def _is_valid_email(email: str) -> bool:
+    if not _EMAIL_RE.match(email):
+        return False
+    if "@" not in email:
+        return False
+    local_part, domain_part = email.rsplit("@", 1)
+    if (
+        not local_part
+        or not domain_part
+        or local_part.startswith(".")
+        or local_part.endswith(".")
+        or domain_part.startswith(".")
+        or domain_part.endswith(".")
+        or ".." in local_part
+        or ".." in domain_part
+    ):
+        return False
+    return True
+
+
 def _sanitize_text(value: str, *, max_length: int) -> str:
     """Trim and remove control chars from a user-provided value."""
-    clean = re.sub(r"[\x00-\x1f\x7f]+", "", str(value or "")).strip()
+    if not isinstance(value, str):
+        value = ""
+    clean = re.sub(r"[\x00-\x1f\x7f]+", "", value).strip()
     return clean[:max_length]
 
 
@@ -96,7 +118,7 @@ def signin_post():
 
     if not email or not password:
         return render_template("signin.html", error="Email and password are required.")
-    if not _EMAIL_RE.match(email):
+    if not _is_valid_email(email):
         return render_template("signin.html", error="Please enter a valid email address.")
 
     db_path = current_app.config["DATABASE_PATH"]
@@ -135,7 +157,7 @@ def signup_post():
     # Validation
     if not email or not password or not first:
         return render_template("signup.html", error="All fields are required.")
-    if not _EMAIL_RE.match(email):
+    if not _is_valid_email(email):
         return render_template("signup.html", error="Please enter a valid email address.")
     password_error = _password_strength_error(password)
     if password_error:

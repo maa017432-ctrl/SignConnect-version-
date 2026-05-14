@@ -240,11 +240,13 @@ def test_history_endpoints_support_anonymous_null_user_rows(client) -> None:
 def test_set_camera_endpoint_switches_index(client) -> None:
     camera_manager = client.application.extensions["camera_manager"]
     original_index = camera_manager.camera_index
-    response = client.post("/api/camera", json={"camera_index": 1})
-    assert response.status_code in (200, 503)
-    # Configured preference is updated even if hardware is unavailable in CI.
-    assert camera_manager.camera_index == 1
-    camera_manager.camera_index = original_index
+    try:
+        response = client.post("/api/camera", json={"camera_index": 1})
+        assert response.status_code in (200, 503)
+        # Configured preference is updated even if hardware is unavailable in CI.
+        assert camera_manager.camera_index == 1
+    finally:
+        camera_manager.camera_index = original_index
 
 
 def test_api_docs_routes(client) -> None:

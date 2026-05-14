@@ -76,6 +76,25 @@ def _api_key_ok() -> bool:
     return bool(current_app.config.get("DEBUG", False))
 
 
+def _authorize_admin_or_csrf() -> tuple[dict[str, object], int] | None:
+    """Authorize write action using API key header or CSRF fallback."""
+    required_key = str(current_app.config.get("API_KEY", "") or "")
+    provided_key = request.headers.get("X-API-Key", "")
+
+    if required_key and provided_key:
+        if hmac.compare_digest(provided_key, required_key):
+            return None
+        return jsonify({"error": "Unauthorized", "code": 401}), 401
+
+    if required_key:
+        validate_csrf_token()
+        return None
+
+    if not _api_key_ok():
+        validate_csrf_token()
+    return None
+
+
 @api_bp.get("/api/status")
 def status() -> tuple[dict[str, object], int]:
     """Return runtime health status for core services.
@@ -746,12 +765,9 @@ def get_camera() -> tuple[dict[str, object], int]:
 @api_bp.post("/api/camera")
 def set_camera() -> tuple[dict[str, object], int]:
     """Update preferred camera index and apply immediately."""
-    required_key = current_app.config.get("API_KEY", "")
-    provided_key = request.headers.get("X-API-Key", "")
-    if required_key and provided_key and not _api_key_ok():
-        return jsonify({"error": "Unauthorized", "code": 401}), 401
-    if not _api_key_ok():
-        validate_csrf_token()
+    auth_error = _authorize_admin_or_csrf()
+    if auth_error is not None:
+        return auth_error
     payload = request.get_json(silent=True) or request.form or {}
     try:
         camera_index = int(payload.get("camera_index"))
@@ -804,12 +820,9 @@ def update_config() -> tuple[dict[str, float | str], int]:
 @api_bp.delete("/api/history")
 def clear_history() -> tuple[dict[str, str], int]:
     """Delete all translation rows belonging to the current user."""
-    required_key = current_app.config.get("API_KEY", "")
-    provided_key = request.headers.get("X-API-Key", "")
-    if required_key and provided_key and not _api_key_ok():
-        return jsonify({"error": "Unauthorized", "code": 401}), 401
-    if not _api_key_ok():
-        validate_csrf_token()
+    auth_error = _authorize_admin_or_csrf()
+    if auth_error is not None:
+        return auth_error
     user_id = session.get("user_id")
     with get_connection(current_app.config["DATABASE_PATH"]) as connection:
         if user_id is None:

@@ -1718,14 +1718,15 @@
   async function applyPreferredCameraFromSettings() {
     const raw = localStorage.getItem("sc_cameraIndex");
     const preferred = Number.parseInt(raw || "1", 10);
-    if (!Number.isInteger(preferred) || preferred < 0 || preferred > 10) return;
+    if (Number.isNaN(preferred) || preferred < 0 || preferred > 10) return;
     try {
       await fetch("/api/camera", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
         body: new URLSearchParams({ camera_index: String(preferred), csrf_token: getCsrfToken() }).toString(),
       });
-    } catch {
+    } catch (error) {
+      console.warn("Failed to apply preferred camera setting:", error);
       // non-fatal; stream startup fallback still works
     }
   }
@@ -1776,7 +1777,9 @@
           if (permission === "granted") {
             new Notification(title, { body, icon: "/static/icons/icon-192.png", silent: false });
           }
-        }).catch(() => { });
+        }).catch((error) => {
+          console.warn("Notification permission request failed:", error);
+        });
       }
     } catch (error) {
       console.warn("Notification delivery failed:", error);
