@@ -126,10 +126,10 @@
             <div class="stg-form">
               <div class="stg-field">
                 <label for="camera-index">Camera Index</label>
-                <p class="stg-field-sub">Select which camera to use (0 = default, 1 = secondary)</p>
+                <p class="stg-field-sub">Select which camera to use (1 = external webcam)</p>
                 <select class="stg-select" id="camera-index">
-                  <option value="0">Camera 0 (Default)</option>
-                  <option value="1">Camera 1</option>
+                  <option value="1">Camera 1 (External Webcam)</option>
+                  <option value="0">Camera 0 (Built-in)</option>
                   <option value="2">Camera 2</option>
                 </select>
               </div>
@@ -182,6 +182,7 @@
                   <span class="stg-toggle-track"></span>
                 </label>
               </div>
+              <button class="sc-btn sc-btn--sm" id="request-notification-btn" type="button">Enable Browser Notifications</button>
             </div>
           </div>
         </section>
@@ -319,7 +320,22 @@
     if (!el) return;
     const defaults = { gestureNotif:true, cameraNotif:true, saveHistory:true };
     el.checked = loadPref(key, defaults[key] ?? false);
-    el.addEventListener("change", () => { savePref(key, el.checked); showToast("Preference saved"); });
+    el.addEventListener("change", async () => {
+      savePref(key, el.checked);
+      if (
+        (key === "gestureNotif" || key === "cameraNotif") &&
+        el.checked &&
+        "Notification" in window &&
+        Notification.permission === "default"
+      ) {
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          showToast("Browser notifications are blocked by your permission settings", "warn");
+          return;
+        }
+      }
+      showToast("Preference saved");
+    });
   });
 
   /* ── fps range ── */
@@ -331,17 +347,55 @@
 
   /* ── camera index ── */
   const camIdx = document.getElementById("camera-index");
-  camIdx.value = loadPref("cameraIndex", "0");
+  camIdx.value = loadPref("cameraIndex", "1");
 
   /* ── save buttons ── */
   document.getElementById("save-profile-btn")?.addEventListener("click", () => {
     showToast("Profile saved (changes apply on next sign-in)");
   });
 
-  document.getElementById("save-camera-btn")?.addEventListener("click", () => {
+  async function applyCameraSettings() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+    const cameraIndex = parseInt(camIdx.value, 10);
+    const response = await fetch("/api/camera", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+      body: new URLSearchParams({ camera_index: String(cameraIndex), csrf_token: csrfToken }).toString(),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || "Failed to switch camera");
+    }
+  }
+
+  document.getElementById("save-camera-btn")?.addEventListener("click", async () => {
     savePref("targetFps", fpsRange.value);
     savePref("cameraIndex", camIdx.value);
-    showToast("Camera settings saved — restart required");
+    try {
+      await applyCameraSettings();
+      showToast("Camera settings applied successfully");
+    } catch (error) {
+      showToast(error.message || "Failed to apply camera settings", "error");
+    }
+  });
+
+  document.getElementById("request-notification-btn")?.addEventListener("click", async () => {
+    if (!("Notification" in window)) {
+      showToast("This browser does not support notifications", "error");
+      return;
+    }
+    if (Notification.permission === "granted") {
+      showToast("Browser notifications are already enabled");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      showToast("Browser notifications enabled");
+    } else if (permission === "denied") {
+      showToast("Notifications were denied in your browser settings", "error");
+    } else {
+      showToast("Notification permission request dismissed", "warn");
+    }
   });
 
   /* ── privacy actions ── */
@@ -366,7 +420,11 @@
   document.getElementById("change-password-btn")?.addEventListener("click", () => {
     const np = document.getElementById("new-password").value;
     const cp = document.getElementById("confirm-password").value;
-    if (!np || np.length < 8) { showToast("Password must be at least 8 characters", "error"); return; }
+    if (!np || np.length < 10) { showToast("Password must be at least 10 characters", "error"); return; }
+    if (!/[A-Z]/.test(np) || !/[a-z]/.test(np) || !/\d/.test(np) || !/[^A-Za-z0-9]/.test(np)) {
+      showToast("Use upper, lower, number, and symbol in password", "error");
+      return;
+    }
     if (np !== cp) { showToast("Passwords do not match", "error"); return; }
     showToast("Password change requires backend integration");
   });

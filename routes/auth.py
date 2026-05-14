@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import sqlite3
 
 from flask import (
     Blueprint,
@@ -23,7 +24,34 @@ from flask import current_app
 LOGGER = logging.getLogger(__name__)
 auth_bp = Blueprint("auth", __name__)
 
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,63}$")
+_PASSWORD_MIN_LENGTH = 10
+_PASSWORD_MAX_LENGTH = 128
+_NAME_MAX_LENGTH = 80
+_EMAIL_MAX_LENGTH = 254
+
+
+def _sanitize_text(value: str, *, max_length: int) -> str:
+    """Trim and remove control chars from a user-provided value."""
+    clean = re.sub(r"[\x00-\x1f\x7f]+", "", str(value or "")).strip()
+    return clean[:max_length]
+
+
+def _password_strength_error(password: str) -> str | None:
+    """Return an error message when password does not meet policy."""
+    if len(password) < _PASSWORD_MIN_LENGTH:
+        return f"Password must be at least {_PASSWORD_MIN_LENGTH} characters."
+    if len(password) > _PASSWORD_MAX_LENGTH:
+        return f"Password must be at most {_PASSWORD_MAX_LENGTH} characters."
+    if not re.search(r"[A-Z]", password):
+        return "Password must include at least one uppercase letter."
+    if not re.search(r"[a-z]", password):
+        return "Password must include at least one lowercase letter."
+    if not re.search(r"\d", password):
+        return "Password must include at least one number."
+    if not re.search(r"[^A-Za-z0-9]", password):
+        return "Password must include at least one special character."
+    return None
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -63,11 +91,13 @@ def signin_get() -> str:
 def signin_post():
     """Handle sign-in form submission."""
     validate_csrf_token()
-    email = request.form.get("email", "").strip()
-    password = request.form.get("password", "").strip()
+    email = _sanitize_text(request.form.get("email", ""), max_length=_EMAIL_MAX_LENGTH).lower()
+    password = str(request.form.get("password", ""))
 
     if not email or not password:
         return render_template("signin.html", error="Email and password are required.")
+    if not _EMAIL_RE.match(email):
+        return render_template("signin.html", error="Please enter a valid email address.")
 
     db_path = current_app.config["DATABASE_PATH"]
     user = _get_user_by_email(db_path, email)
@@ -97,18 +127,19 @@ def signup_get() -> str:
 def signup_post():
     """Handle sign-up form submission."""
     validate_csrf_token()
-    first = request.form.get("first_name", "").strip()
-    last = request.form.get("last_name", "").strip()
-    email = request.form.get("email", "").strip()
-    password = request.form.get("password", "").strip()
+    first = _sanitize_text(request.form.get("first_name", ""), max_length=_NAME_MAX_LENGTH)
+    last = _sanitize_text(request.form.get("last_name", ""), max_length=_NAME_MAX_LENGTH)
+    email = _sanitize_text(request.form.get("email", ""), max_length=_EMAIL_MAX_LENGTH).lower()
+    password = str(request.form.get("password", ""))
 
     # Validation
     if not email or not password or not first:
         return render_template("signup.html", error="All fields are required.")
     if not _EMAIL_RE.match(email):
         return render_template("signup.html", error="Please enter a valid email address.")
-    if len(password) < 8:
-        return render_template("signup.html", error="Password must be at least 8 characters.")
+    password_error = _password_strength_error(password)
+    if password_error:
+        return render_template("signup.html", error=password_error)
 
     db_path = current_app.config["DATABASE_PATH"]
 
@@ -118,6 +149,8 @@ def signup_post():
     try:
         full_name = f"{first} {last}".strip()
         user_id = _create_user(db_path, email, password, full_name)
+    except sqlite3.IntegrityError:
+        return render_template("signup.html", error="An account with that email already exists.")
     except Exception:
         LOGGER.exception("Failed to create user account")
         return render_template("signup.html", error="Account creation failed. Please try again.")

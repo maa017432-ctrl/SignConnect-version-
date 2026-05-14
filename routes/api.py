@@ -8,6 +8,7 @@ import tempfile
 import time
 import csv
 import io
+import hmac
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,6 +16,7 @@ from pathlib import Path
 from flask import Blueprint, current_app, jsonify, request, session
 from flask.wrappers import Response
 
+from core.camera import CameraUnavailableError
 from core.csrf import validate_csrf_token
 from core.logging_config import get_uptime_seconds
 from core.prediction_smoother import PredictionSmoother, SentenceBuilder
@@ -37,6 +39,19 @@ api_bp = Blueprint("api", __name__)
 
 _MAX_TEXT_LEN = 500
 _MAX_VIDEO_UPLOAD_BYTES = 100 * 1024 * 1024
+_ALLOWED_LANGS = {"en", "asl"}
+
+
+def _normalize_lang(raw_lang: object) -> str:
+    """Normalize requested language to the supported English/US ASL pair."""
+    value = str(raw_lang or "").strip().lower()
+    return value if value in _ALLOWED_LANGS else "en"
+
+
+def _normalize_tts_lang(raw_lang: object) -> str:
+    """Normalize language for TTS backends (ASL maps to spoken English)."""
+    normalized = _normalize_lang(raw_lang)
+    return "en" if normalized == "asl" else normalized
 
 
 def _looks_like_mp4(upload) -> bool:
@@ -54,13 +69,11 @@ def _looks_like_mp4(upload) -> bool:
 
 
 def _api_key_ok() -> bool:
-    """Return True if the request carries a valid API key, or if no key is configured."""
-    if current_app.config.get("DEBUG", False):
-        return True
+    """Return True when request satisfies configured API key policy."""
     required = current_app.config.get("API_KEY", "")
-    if not required:
-        return False
-    return request.headers.get("X-API-Key", "") == required
+    if required:
+        return hmac.compare_digest(request.headers.get("X-API-Key", ""), required)
+    return bool(current_app.config.get("DEBUG", False))
 
 
 @api_bp.get("/api/status")
@@ -350,7 +363,7 @@ def tts() -> tuple[dict[str, str | int], int]:
     if len(text) > _MAX_TEXT_LEN:
         return jsonify({"error": f"Text exceeds {_MAX_TEXT_LEN} character limit", "code": 400}), 400
 
-    lang = str(payload.get("lang", "en")).strip().lower() or "en"
+    lang = _normalize_tts_lang(payload.get("lang", "en"))
 
     tts_engine = current_app.extensions["tts_engine"]
     try:
@@ -389,9 +402,6 @@ def upload_video() -> tuple[dict[str, object], int]:
       503:
         description: OpenCV backend unavailable.
     """
-    if cv2 is None:
-        return jsonify({"error": "Video processing unavailable", "code": 503}), 503
-
     upload = request.files.get("video")
     if upload is None or not upload.filename:
         return jsonify({"error": "Missing video file", "code": 400}), 400
@@ -408,6 +418,8 @@ def upload_video() -> tuple[dict[str, object], int]:
         return jsonify({"error": "Uploaded video is empty", "code": 400}), 400
     if size_bytes > _MAX_VIDEO_UPLOAD_BYTES:
         return jsonify({"error": "Video file is too large", "code": 400}), 400
+    if cv2 is None:
+        return jsonify({"error": "Video processing unavailable", "code": 503}), 503
 
     tmp_path: str | None = None
     capture = None
@@ -560,7 +572,7 @@ def translate() -> tuple[dict[str, str | int], int]:
     if len(text) > _MAX_TEXT_LEN:
         return jsonify({"error": f"Text exceeds {_MAX_TEXT_LEN} character limit", "code": 400}), 400
 
-    lang = str(payload.get("lang", "en")).strip().lower() or "en"
+    lang = _normalize_tts_lang(payload.get("lang", "en"))
 
     tts_engine = current_app.extensions["tts_engine"]
     try:
@@ -714,6 +726,62 @@ def get_config() -> tuple[dict[str, float], int]:
     return jsonify({"confidence_threshold": classifier.confidence_threshold}), 200
 
 
+@api_bp.get("/api/camera")
+def get_camera() -> tuple[dict[str, object], int]:
+    """Return current camera selection and runtime state."""
+    camera_manager = current_app.extensions["camera_manager"]
+    return (
+        jsonify(
+            {
+                "configured_index": int(getattr(camera_manager, "camera_index", 0)),
+                "active_index": camera_manager.active_camera_index,
+                "is_streaming": bool(camera_manager.is_streaming),
+                "is_available": bool(camera_manager.is_available()),
+            }
+        ),
+        200,
+    )
+
+
+@api_bp.post("/api/camera")
+def set_camera() -> tuple[dict[str, object], int]:
+    """Update preferred camera index and apply immediately."""
+    required_key = current_app.config.get("API_KEY", "")
+    provided_key = request.headers.get("X-API-Key", "")
+    if required_key and provided_key and not _api_key_ok():
+        return jsonify({"error": "Unauthorized", "code": 401}), 401
+    if not _api_key_ok():
+        validate_csrf_token()
+    payload = request.get_json(silent=True) or request.form or {}
+    try:
+        camera_index = int(payload.get("camera_index"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "camera_index must be an integer", "code": 400}), 400
+    if camera_index < 0 or camera_index > 10:
+        return jsonify({"error": "camera_index is out of range", "code": 400}), 400
+
+    camera_manager = current_app.extensions["camera_manager"]
+    try:
+        camera_manager.set_camera_index(camera_index)
+    except CameraUnavailableError:
+        return jsonify({"error": "Selected camera is unavailable", "code": 503}), 503
+    except Exception:
+        LOGGER.exception("Failed to switch camera to index %s", camera_index)
+        return jsonify({"error": "Failed to switch camera", "code": 500}), 500
+
+    return (
+        jsonify(
+            {
+                "status": "ok",
+                "configured_index": int(getattr(camera_manager, "camera_index", camera_index)),
+                "active_index": camera_manager.active_camera_index,
+                "is_streaming": bool(camera_manager.is_streaming),
+            }
+        ),
+        200,
+    )
+
+
 @api_bp.post("/api/config")
 def update_config() -> tuple[dict[str, float | str], int]:
     """Update runtime configuration values without restarting the server."""
@@ -736,6 +804,10 @@ def update_config() -> tuple[dict[str, float | str], int]:
 @api_bp.delete("/api/history")
 def clear_history() -> tuple[dict[str, str], int]:
     """Delete all translation rows belonging to the current user."""
+    required_key = current_app.config.get("API_KEY", "")
+    provided_key = request.headers.get("X-API-Key", "")
+    if required_key and provided_key and not _api_key_ok():
+        return jsonify({"error": "Unauthorized", "code": 401}), 401
     if not _api_key_ok():
         validate_csrf_token()
     user_id = session.get("user_id")
@@ -786,9 +858,7 @@ def get_labels() -> tuple[dict[str, object], int]:
 @api_bp.get("/api/translations/<lang>")
 def get_translations(lang: str) -> tuple[dict[str, object], int]:
     """Return translations for the specified language."""
-    lang = lang.lower().strip()
-    if lang not in ("en", "ar", "fr", "es", "de", "zh", "ja", "ko"):
-        lang = "en"
+    lang = _normalize_lang(lang)
 
     translations_file = Path(current_app.static_folder) / "data" / "translations.json"
     try:

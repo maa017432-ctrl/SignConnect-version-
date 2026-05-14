@@ -29,7 +29,7 @@ class CameraManager:
     _INDICES = (0, 1, 2)
     _WARMUP_READS = 3
 
-    def __init__(self, camera_index: int = 0) -> None:
+    def __init__(self, camera_index: int = 1) -> None:
         self.camera_index = camera_index
         self._capture: Optional[Any] = None
         self._active_camera_index: Optional[int] = None
@@ -46,8 +46,25 @@ class CameraManager:
         """Camera device index that succeeded during open (task-named property)."""
         return self._active_camera_index
 
-    def _try_open_camera(self) -> tuple[Optional[Any], Optional[int]]:
-        """Try indices 0, 1, 2 and return ``(capture, index)`` on first success.
+    @property
+    def active_camera_index(self) -> Optional[int]:
+        """Camera index currently active for capture."""
+        return self._active_camera_index
+
+    def _probe_order(self, preferred_index: Optional[int]) -> list[int]:
+        indices = list(self._INDICES)
+        if preferred_index is None:
+            return indices
+        if preferred_index in indices:
+            return [preferred_index] + [idx for idx in indices if idx != preferred_index]
+        if preferred_index >= 0:
+            return [preferred_index] + indices
+        return indices
+
+    def _try_open_camera(
+        self, preferred_index: Optional[int] = None
+    ) -> tuple[Optional[Any], Optional[int]]:
+        """Try preferred index first, then known fallback indices.
 
         The capture object is configured for 640x480 @ 30 FPS and warmed up
         with several discarded reads.  Returns ``(None, None)`` if no camera
@@ -55,7 +72,7 @@ class CameraManager:
         """
         if cv2 is None:
             return None, None
-        for index in self._INDICES:
+        for index in self._probe_order(preferred_index):
             # On Windows, DirectShow is often more reliable than the default MSMF backend
             if sys.platform == "win32":
                 cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
@@ -94,7 +111,7 @@ class CameraManager:
         Returns:
             True if a capture is stored on ``self._capture`` and index set.
         """
-        cap, index = self._try_open_camera()
+        cap, index = self._try_open_camera(self.camera_index)
         if cap is not None:
             self._capture = cap
             self._active_camera_index = index
@@ -144,6 +161,22 @@ class CameraManager:
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=0.5)
         LOGGER.info("Camera capture stopped")
+
+    def set_camera_index(self, camera_index: int) -> None:
+        """Apply a new preferred camera index and restart capture if needed."""
+        try:
+            normalized_index = int(camera_index)
+        except (TypeError, ValueError) as error:
+            raise CameraUnavailableError("Invalid camera index") from error
+
+        was_streaming = self.is_streaming
+        self.camera_index = normalized_index
+        self._hw_probe_cache = None
+        self._hw_probe_time = 0.0
+
+        if was_streaming:
+            self.stop()
+            self.start()
 
     def get_frame(self) -> Optional[np.ndarray]:
         """Return a copy of the latest frame if available."""
