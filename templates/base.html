@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<script>
+  (function() {
+    var t = localStorage.getItem('sc_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="description"
+    content="{% block meta_description %}Real-time sign language translation powered by AI, MediaPipe, and deep learning.{% endblock %}">
+  <meta name="theme-color" content="#2f81f7">
+  <title>{% block title %}SignConnect{% endblock %} — AI Sign Language Translator</title>
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%238b5cf6'/%3E%3Cstop offset='100%25' stop-color='%233b82f6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cpath d='M20 13.5V10a2 2 0 0 0-4 0v0M16 12.5V8a2 2 0 0 0-4 0v2M12 13V10a2 2 0 0 0-4 0v8l0 0M20 11.5a2 2 0 0 1 4 0v5a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-6-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L9 17.5' fill='none' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}">
+</head>
+
+<body data-theme="dark">
+
+  <!-- ── NAVBAR ── -->
+  <nav class="sc-navbar" id="sc-navbar">
+    <div class="sc-navbar-inner">
+
+      <!-- Logo -->
+      <a href="{{ url_for('main.index') }}" class="sc-logo-link" aria-label="SignConnect Home">
+        <div class="sc-logo-icon">
+          <svg class="sc-logo-hand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v0M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/>
+            <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+          </svg>
+        </div>
+        <span class="sc-logo-text">Sign<span class="sc-logo-highlight">Connect</span></span>
+      </a>
+
+      <!-- Desktop Nav Links -->
+      <div class="sc-nav-links" id="sc-nav-links-desktop">
+        <a href="{{ url_for('main.index') }}" class="sc-nav-link {% if request.endpoint == 'main.index' %}active{% endif %}">
+          <svg class="sc-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Home
+        </a>
+        <a href="{{ url_for('main.translator') }}" class="sc-nav-link {% if request.endpoint == 'main.translator' %}active{% endif %}">
+          <svg class="sc-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          Translator
+        </a>
+
+        <a href="{{ url_for('main.dictionary') }}" class="sc-nav-link {% if request.endpoint == 'main.dictionary' %}active{% endif %}">
+          <svg class="sc-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Dictionary
+        </a>
+        <a href="{{ url_for('main.history') }}" class="sc-nav-link {% if request.endpoint == 'main.history' %}active{% endif %}">
+          <svg class="sc-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          History
+        </a>
+        <a href="{{ url_for('main.settings') }}" class="sc-nav-link {% if request.endpoint == 'main.settings' %}active{% endif %}">
+          <svg class="sc-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M2 12a10 10 0 0 0 2.93 7.07"/><path d="M6.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+          Settings
+        </a>
+        {% if current_user and current_user.is_authenticated %}
+        <a href="{{ url_for('main.admin') }}" class="sc-nav-link {% if request.endpoint == 'main.admin' %}active{% endif %}">
+          <svg class="sc-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+          Admin
+        </a>
+        {% endif %}
+      </div>
+
+      <!-- Right Actions -->
+      <div class="sc-nav-actions">
+        <button id="theme-toggle" class="sc-theme-toggle" type="button" title="Toggle theme" aria-label="Toggle theme">
+          <svg class="sc-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="sc-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+
+        {% if current_user and current_user.is_authenticated %}
+          <!-- Logged-in user: show name + sign out -->
+          <span class="sc-nav-user-name">{{ current_user.name }}</span>
+          <a href="{{ url_for('auth.signout') }}" class="sc-btn sc-btn--sm sc-btn--nav-signin">Sign Out</a>
+        {% else %}
+          <!-- Guest: show Sign In -->
+          <a href="{{ url_for('auth.signin_get') }}" class="sc-btn sc-btn--sm sc-btn--nav-signin">Sign In</a>
+        {% endif %}
+
+        <!-- Mobile Hamburger -->
+        <button class="sc-mobile-toggle" id="sc-mobile-toggle" type="button" aria-label="Toggle menu">
+          <svg class="sc-hamburger-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          <svg class="sc-close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Menu -->
+    <div class="sc-mobile-menu" id="sc-mobile-menu">
+      <a href="{{ url_for('main.index') }}" class="sc-mobile-link {% if request.endpoint == 'main.index' %}active{% endif %}">
+        <svg class="sc-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Home
+      </a>
+      <a href="{{ url_for('main.translator') }}" class="sc-mobile-link {% if request.endpoint == 'main.translator' %}active{% endif %}">
+        <svg class="sc-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        Translator
+      </a>
+      <a href="{{ url_for('main.dictionary') }}" class="sc-mobile-link {% if request.endpoint == 'main.dictionary' %}active{% endif %}">
+        <svg class="sc-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        Dictionary
+      </a>
+      <a href="{{ url_for('main.history') }}" class="sc-mobile-link {% if request.endpoint == 'main.history' %}active{% endif %}">
+        <svg class="sc-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        History
+      </a>
+      <a href="{{ url_for('main.settings') }}" class="sc-mobile-link {% if request.endpoint == 'main.settings' %}active{% endif %}">
+        <svg class="sc-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M2 12a10 10 0 0 0 2.93 7.07"/><path d="M6.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+        Settings
+      </a>
+      {% if current_user and current_user.is_authenticated %}
+      <a href="{{ url_for('main.admin') }}" class="sc-mobile-link {% if request.endpoint == 'main.admin' %}active{% endif %}">
+        <svg class="sc-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+        Admin
+      </a>
+      {% endif %}
+      {% if current_user and current_user.is_authenticated %}
+        <a href="{{ url_for('auth.signout') }}" class="sc-mobile-link">Sign Out ({{ current_user.name }})</a>
+      {% else %}
+        <a href="{{ url_for('auth.signin_get') }}" class="sc-mobile-link">Sign In</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <div class="page-wrap">
+    <main>{% block content %}{% endblock %}</main>
+  </div>
+
+  {% block footer %}
+  <footer class="sc-footer">
+    <div class="sc-footer-inner">
+      <div class="sc-footer-status">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sc-footer-check"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <span>All systems operational</span>
+      </div>
+      <p class="sc-footer-copy">&copy; 2026 SignConnect Inc.</p>
+    </div>
+  </footer>
+  {% endblock %}
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+  <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/home-animations.js') }}"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js", { scope: "/" })
+        .catch(function (e) { console.debug("SW registration failed:", e); });
+    }
+  </script>
+</body>
+
+</html>

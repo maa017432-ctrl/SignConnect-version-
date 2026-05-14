@@ -1,0 +1,43 @@
+# Python virtual environments (large — never include in image)
+.venv/
+.venv311/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+
+# IDE / editor
+.cursor/
+.vscode/
+*.code-workspace
+*.idea/
+
+# Git
+.git/
+.gitignore
+
+# Runtime-generated files (handled via Docker volumes instead)
+database/signconnect.db
+static/audio/*.mp3
+
+# Large binary files that change frequently
+data/*.csv
+
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets
+.env
+*.env.local
+
+# Docs / plans
+*.md
+*.plan.md

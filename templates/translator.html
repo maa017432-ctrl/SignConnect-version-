@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Translator{% endblock %}
+{% block meta_description %}Live sign language translator — camera feed, gesture recognition, and speech synthesis.{% endblock %}
+
+{% block content %}
+<div class="sc-page sc-page--translator">
+  <div class="sc-page-container">
+
+    <!-- Page Header -->
+    <div class="sc-page-header sc-reveal">
+      <div>
+        <h1 class="sc-page-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-page-title-icon"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          Live Translator
+          <span class="sc-live-badge" id="sc-live-badge" style="display:none">
+            <span class="sc-live-dot"></span> LIVE
+          </span>
+        </h1>
+        <p class="sc-page-subtitle">Real-time ASL to English translation</p>
+      </div>
+      <div class="sc-page-actions">
+        <button class="sc-icon-btn" title="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+        <button class="sc-icon-btn" title="Fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
+      </div>
+    </div>
+
+    {% if demo_mode %}
+    <!-- Demo Mode Warning Banner -->
+    <div class="sc-demo-banner" role="alert">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <strong>Demo Mode:</strong> The gesture model failed to load — predictions are simulated. Camera and MediaPipe are still active.
+    </div>
+    {% endif %}
+
+    <!-- Main Grid -->
+    <div class="sc-translator-grid">
+
+      <!-- Left: Camera + Controls -->
+      <div class="sc-translator-main">
+
+        <!-- Camera Feed -->
+        <div class="sc-camera-wrap">
+          <div class="sc-camera-overlay-bar">
+            <div class="sc-camera-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-chip-icon"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg> <span id="model-status">Model: loading</span></div>
+            <div class="sc-camera-chip">FPS: <span id="fps-display">--</span></div>
+          </div>
+
+          <div class="video-wrapper">
+            <img id="video-stream" src="" alt="Live sign language feed" width="640" height="480" decoding="async"
+              data-mjpeg-url="{{ url_for('stream.video_feed') }}" data-frame-url="{{ url_for('api.api_camera_frame') }}">
+            <div id="video-overlay" class="video-overlay">
+              <div class="sc-camera-off-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16.5 9.4l-2-1.74"/><path d="M2 2l20 20"/><path d="M21.43 15.97V8a2 2 0 0 0-2-2h-2.09"/><path d="M10.91 6H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14"/></svg>
+              </div>
+              <span class="overlay-msg" data-i18n="translator.connecting">Connecting to camera…</span>
+              <div class="spinner"></div>
+            </div>
+          </div>
+
+
+        </div>
+
+        <!-- Control Bar -->
+        <div class="sc-control-bar sc-reveal" data-delay="100">
+          <div class="sc-control-info">
+            <div class="sc-control-stat">
+              <p class="sc-control-label">DETECTED GESTURE</p>
+              <div class="sc-control-value">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-ctrl-icon"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+                <span id="recognized-text">—</span>
+              </div>
+            </div>
+            <div class="sc-control-divider"></div>
+            <div class="sc-control-stat">
+              <p class="sc-control-label">CONFIDENCE</p>
+              <div class="sc-confidence-inline">
+                <div class="sc-conf-bar"><div class="sc-conf-fill" id="confidence-bar-fill" style="transition:width 0.3s ease"></div></div>
+                <span class="sc-conf-pct" id="confidence-value">0%</span>
+              </div>
+            </div>
+          </div>
+          <div class="sc-control-buttons">
+            <button id="pause-btn" class="sc-btn sc-btn--sm" type="button" disabled>
+              <svg viewBox="0 0 24 24" fill="currentColor" class="sc-btn-icon" style="width:14px;height:14px"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+              Pause
+            </button>
+            <button id="upload-video-btn" class="sc-btn sc-btn--sm" type="button">
+              <svg viewBox="0 0 24 24" fill="currentColor" class="sc-btn-icon" style="width:14px;height:14px"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+              Upload Video
+            </button>
+            <input id="upload-video-input" type="file" accept="video/mp4" style="display:none">
+          </div>
+          <div id="upload-video-status" style="margin-top:10px;color:var(--text-secondary);font-size:13px;min-height:20px"></div>
+          <progress id="upload-video-progress" value="0" max="100" style="width:100%;margin-top:6px;height:8px;display:none"></progress>
+          <!-- Hidden start-btn kept for JS compatibility -->
+          <div style="display:none">
+            <button id="start-btn" class="sc-btn sc-btn--primary sc-btn--translate" type="button">
+              <svg viewBox="0 0 24 24" fill="currentColor" class="sc-btn-icon"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span>Start Translating</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Sidebar Widgets -->
+      <div class="sc-translator-sidebar">
+
+        <!-- Sentence Output Widget -->
+        <div class="sc-widget sc-reveal" data-delay="100">
+          <div class="sc-widget-header">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-widget-icon"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Generated Sentence</h3>
+          </div>
+          <div class="sc-widget-body">
+            <div id="sentence-display" class="sc-sentence-display">…</div>
+            <div class="sc-sentence-actions">
+              <button id="auto-speak-btn" type="button" class="sc-btn sc-btn--sm" title="Toggle auto-speak: speaks each new word automatically" aria-pressed="false">🔊 Auto</button>
+              <button id="speak-btn" type="button" class="sc-btn sc-btn--sm">🔊 Speak</button>
+              <button id="copy-btn" type="button" class="sc-btn sc-btn--sm">📋 Copy</button>
+              <button id="clear-btn" type="button" class="sc-btn sc-btn--sm sc-btn--danger">🗑 Clear</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Session Stats Widget -->
+        <div class="sc-widget sc-reveal" data-delay="200">
+          <div class="sc-widget-header">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-widget-icon"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Session Stats</h3>
+          </div>
+          <div class="sc-widget-body">
+            <div class="sc-stats-mini-grid">
+              <div class="sc-stat-mini"><span class="sc-stat-mini-val" id="stat-count">0</span><span class="sc-stat-mini-lbl">Gestures</span></div>
+              <div class="sc-stat-mini"><span class="sc-stat-mini-val" id="stat-avg-conf">0%</span><span class="sc-stat-mini-lbl">Avg Conf.</span></div>
+              <div class="sc-stat-mini"><span class="sc-stat-mini-val" id="stat-duration">0s</span><span class="sc-stat-mini-lbl">Duration</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Settings Widget -->
+        <div class="sc-widget sc-widget--dark sc-reveal" data-delay="300">
+          <div class="sc-widget-header">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-widget-icon"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Quick Settings</h3>
+          </div>
+          <div class="sc-widget-body">
+            <div class="sc-setting-row">
+              <label for="lang-select">Language</label>
+              <select id="lang-select" class="sc-select" data-lang-select>
+                <option value="en">🇺🇸 ASL</option>
+                <option value="ar">🇸🇦 العربية</option>
+                <option value="fr">🇫🇷 Français</option>
+                <option value="es">🇪🇸 Español</option>
+              </select>
+            </div>
+            <div class="sc-setting-row">
+              <label for="threshold-slider">Confidence <span id="threshold-val" style="float:right;color:var(--text-muted);font-size:12px">75%</span></label>
+              <input id="threshold-slider" type="range" min="10" max="99" value="75" step="1" class="sc-range">
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden elements for JS compatibility -->
+<div id="hidden-elements" style="display:none">
+  <button id="pause-btn-compat" type="button" style="display:none">Pause</button>
+  <button id="delete-word-btn" type="button">Undo</button>
+  <button id="practice-btn" type="button">Learn</button>
+  <button id="settings-btn" type="button">Settings</button>
+  <div id="settings-modal" class="settings-modal hidden"></div>
+  <div id="settings-overlay" class="settings-overlay"></div>
+  <button id="settings-close-btn" type="button">✕</button>
+  <button id="settings-reset-btn" class="btn btn-secondary" type="button">Reset</button>
+  <button id="settings-save-btn" class="btn btn-primary" type="button">Save</button>
+  <div id="topk-panel" class="hidden"></div>
+  <ul id="topk-list"></ul>
+  <div id="practice-panel" class="hidden"></div>
+  <button id="practice-close-btn" type="button">✕</button>
+  <input id="practice-search-input" type="text" />
+  <div id="practice-list"></div>
+  <div id="practice-visualizer" class="hidden"></div>
+  <button id="practice-back-btn" type="button">Back</button>
+  <canvas id="gesture-canvas" width="280" height="360"></canvas>
+  <div id="history-list"></div>
+  <button id="refresh-history-btn" type="button">Refresh</button>
+  <button id="clear-history-btn" type="button">Clear</button>
+  <input id="training-mode-toggle" type="checkbox" />
+  <span id="stat-accuracy"></span>
+  <span id="stat-best"></span>
+  <span id="stat-common"></span>
+  <select id="camera-select"></select>
+  <input id="settings-threshold-slider" type="range" />
+  <input id="settings-audio-toggle" type="checkbox" />
+  <input id="settings-training-toggle" type="checkbox" />
+  <input id="settings-theme-toggle" type="checkbox" />
+  <select id="settings-lang-select"></select>
+  <div id="commit-progress"></div>
+  <div id="progress-hint"></div>
+  <span id="confidence-badge"></span>
+</div>
+{% endblock %}

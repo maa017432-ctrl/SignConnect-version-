@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block meta_description %}Administrative analytics dashboard for SignConnect usage, translation activity, and model confidence trends.{% endblock %}
+
+{% block content %}
+<style>
+  .admin-shell{max-width:1200px;margin:0 auto;padding:40px 20px 72px}
+  .admin-hero{position:relative;overflow:hidden;border:1px solid rgba(148,163,184,.16);border-radius:28px;padding:32px;background:linear-gradient(135deg,rgba(139,92,246,.26),rgba(37,99,235,.2) 55%,rgba(15,23,42,.92));box-shadow:0 30px 80px rgba(15,23,42,.28);margin-bottom:28px}
+  .admin-hero::after{content:"";position:absolute;inset:auto -60px -80px auto;width:220px;height:220px;background:radial-gradient(circle,rgba(96,165,250,.32),transparent 68%)}
+  .admin-kicker{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(15,23,42,.5);border:1px solid rgba(148,163,184,.16);color:#c4b5fd;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+  .admin-title{margin:14px 0 10px;font-size:clamp(2rem,5vw,3.4rem);line-height:1.02;letter-spacing:-.04em}
+  .admin-subtitle{margin:0;max-width:760px;color:rgba(226,232,240,.86);font-size:1rem}
+  .admin-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin:24px 0 30px}
+  .admin-stat{padding:22px;border-radius:24px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.15);box-shadow:0 18px 45px rgba(15,23,42,.2)}
+  .admin-stat-label{display:block;color:#94a3b8;font-size:.9rem;margin-bottom:10px}
+  .admin-stat-value{display:block;font-size:2rem;font-weight:800;letter-spacing:-.04em}
+  .admin-stat-note{display:block;margin-top:8px;color:#cbd5e1;font-size:.92rem}
+  .admin-panels{display:grid;grid-template-columns:1.35fr 1fr;gap:20px}
+  .admin-panel{padding:22px;border-radius:26px;background:rgba(15,23,42,.78);border:1px solid rgba(148,163,184,.14);box-shadow:0 20px 48px rgba(15,23,42,.22)}
+  .admin-panel h2{margin:0 0 6px;font-size:1.15rem}
+  .admin-panel p{margin:0 0 18px;color:#94a3b8;font-size:.95rem}
+  .admin-panel canvas{width:100%!important;height:320px!important}
+  .admin-panel--wide{grid-column:1 / -1}
+  .admin-highlights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:18px}
+  .admin-highlight{padding:16px 18px;border-radius:20px;background:rgba(30,41,59,.74);border:1px solid rgba(148,163,184,.12)}
+  .admin-highlight strong{display:block;font-size:1rem;margin-bottom:4px}
+  .admin-highlight span{color:#94a3b8;font-size:.9rem}
+  @media (max-width: 1080px){
+    .admin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .admin-panels{grid-template-columns:1fr}
+  }
+  @media (max-width: 640px){
+    .admin-shell{padding:28px 14px 56px}
+    .admin-grid,.admin-highlights{grid-template-columns:1fr}
+    .admin-hero,.admin-panel,.admin-stat{border-radius:22px}
+  }
+</style>
+
+<section class="admin-shell">
+  <header class="admin-hero">
+    <span class="admin-kicker">System Administrator • Analytics Overview</span>
+    <h1 class="admin-title">Admin Dashboard</h1>
+    <p class="admin-subtitle">
+      A presentation-ready snapshot of SignConnect platform usage, translator activity, and model confidence trends.
+    </p>
+
+    <div class="admin-highlights">
+      <div class="admin-highlight">
+        <strong>{{ stats.translations_today }}</strong>
+        <span>Translations processed today</span>
+      </div>
+      <div class="admin-highlight">
+        <strong>{{ stats.active_users }}</strong>
+        <span>Users with recorded translation activity</span>
+      </div>
+      <div class="admin-highlight">
+        <strong>{{ "%.1f"|format(stats.average_confidence) }}%</strong>
+        <span>Average model confidence across all translations</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="admin-grid" aria-label="Summary statistics">
+    <article class="admin-stat">
+      <span class="admin-stat-label">Total Translations</span>
+      <span class="admin-stat-value">{{ stats.total_translations }}</span>
+      <span class="admin-stat-note">All translation history rows stored in SQLite.</span>
+    </article>
+    <article class="admin-stat">
+      <span class="admin-stat-label">Registered Users</span>
+      <span class="admin-stat-value">{{ stats.total_users }}</span>
+      <span class="admin-stat-note">Accounts available to access SignConnect.</span>
+    </article>
+    <article class="admin-stat">
+      <span class="admin-stat-label">Active Users</span>
+      <span class="admin-stat-value">{{ stats.active_users }}</span>
+      <span class="admin-stat-note">Distinct signed-in users with saved translation activity.</span>
+    </article>
+    <article class="admin-stat">
+      <span class="admin-stat-label">Average Confidence</span>
+      <span class="admin-stat-value">{{ "%.1f"|format(stats.average_confidence) }}%</span>
+      <span class="admin-stat-note">A proxy for gesture recognition reliability.</span>
+    </article>
+  </section>
+
+  <section class="admin-panels">
+    <article class="admin-panel">
+      <h2>Translations Over Time</h2>
+      <p>Daily translation volume over the past 7 days.</p>
+      <canvas id="translationsChart" aria-label="Translations over time chart"></canvas>
+    </article>
+
+    <article class="admin-panel">
+      <h2>Most Common Gestures</h2>
+      <p>Top gesture labels based on stored translation frequency.</p>
+      <canvas id="gesturesChart" aria-label="Most common gestures chart"></canvas>
+    </article>
+
+    <article class="admin-panel admin-panel--wide">
+      <h2>Gesture Confidence</h2>
+      <p>Average model confidence by gesture label for the strongest-performing classes.</p>
+      <canvas id="confidenceChart" aria-label="Gesture confidence chart"></canvas>
+    </article>
+  </section>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+<script>
+  const chartData = {{ chart_data|tojson }};
+  const gridColor = "rgba(148, 163, 184, 0.16)";
+  const tickColor = "#cbd5e1";
+
+  const baseOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: tickColor, boxWidth: 12, usePointStyle: true } },
+      tooltip: {
+        backgroundColor: "rgba(15, 23, 42, 0.95)",
+        titleColor: "#fff",
+        bodyColor: "#e2e8f0",
+        borderColor: "rgba(148, 163, 184, 0.18)",
+        borderWidth: 1
+      }
+    },
+    scales: {
+      x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+      y: { ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true }
+    }
+  };
+
+  new Chart(document.getElementById("translationsChart"), {
+    type: "line",
+    data: {
+      labels: chartData.translations_over_time.labels,
+      datasets: [{
+        label: "Translations",
+        data: chartData.translations_over_time.values,
+        borderColor: "#8b5cf6",
+        backgroundColor: "rgba(139, 92, 246, 0.22)",
+        fill: true,
+        tension: 0.35,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: baseOptions
+  });
+
+  new Chart(document.getElementById("gesturesChart"), {
+    type: "doughnut",
+    data: {
+      labels: chartData.top_gestures.labels,
+      datasets: [{
+        data: chartData.top_gestures.values,
+        backgroundColor: ["#8b5cf6", "#3b82f6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"],
+        borderColor: "rgba(15, 23, 42, 0.9)",
+        borderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom", labels: { color: tickColor, boxWidth: 12, usePointStyle: true } },
+        tooltip: baseOptions.plugins.tooltip
+      }
+    }
+  });
+
+  new Chart(document.getElementById("confidenceChart"), {
+    type: "bar",
+    data: {
+      labels: chartData.confidence_by_gesture.labels,
+      datasets: [{
+        label: "Average confidence (%)",
+        data: chartData.confidence_by_gesture.values,
+        backgroundColor: "rgba(59, 130, 246, 0.72)",
+        borderColor: "#60a5fa",
+        borderWidth: 1.5,
+        borderRadius: 10
+      }]
+    },
+    options: {
+      ...baseOptions,
+      indexAxis: "y",
+      scales: {
+        x: { ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true, max: 100 },
+        y: { ticks: { color: tickColor }, grid: { display: false } }
+      }
+    }
+  });
+</script>
+{% endblock %}

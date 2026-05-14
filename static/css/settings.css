@@ -1,0 +1,317 @@
+/* ============================================================
+   Minimal Settings System — Theme Variables & Styling
+   Production-ready theme system with smooth transitions
+   ============================================================ */
+
+/* ── Theme Color Variables ── */
+:root[data-theme="dark"] {
+    --bg-primary: #0B0F19;
+    --bg-secondary: #111827;
+    --surface: #1F2937;
+    --surface-hover: #2D3748;
+    --border: #374151;
+    --text-primary: #E5E7EB;
+    --text-secondary: #9CA3AF;
+    --text-muted: #6B7280;
+    --accent: #4F46E5;
+    --accent-hover: #4338CA;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --error: #EF4444;
+}
+
+:root[data-theme="light"] {
+    --bg-primary: #FFFFFF;
+    --bg-secondary: #F9FAFB;
+    --surface: #F3F4F6;
+    --surface-hover: #E5E7EB;
+    --border: #D1D5DB;
+    --text-primary: #1F2937;
+    --text-secondary: #4B5563;
+    --text-muted: #6B7280;
+    --accent: #4F46E5;
+    --accent-hover: #4338CA;
+    --success: #059669;
+    --warning: #D97706;
+    --error: #DC2626;
+}
+
+/* ── Base Styles ── */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ── Header with Theme Toggle ── */
+header {
+    background-color: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+}
+
+/* ── Theme Toggle Switch ── */
+#theme-toggle {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+#theme-toggle:hover {
+    background-color: var(--surface-hover);
+    transform: scale(1.1);
+}
+
+#theme-toggle:active {
+    transform: scale(0.95);
+}
+
+/* ── Main Content ── */
+main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.section {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.section h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.section p {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+}
+
+/* ── Settings Panel ── */
+.settings-panel {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 2rem;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.settings-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--border);
+    gap: 2rem;
+}
+
+.settings-item:last-child {
+    border-bottom: none;
+}
+
+.settings-item-content h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.settings-item-content p {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* ── Toggle Switch Component ── */
+.toggle-switch {
+    position: relative;
+    display: inline-flex;
+    width: 3.25rem;
+    height: 1.75rem;
+    background-color: var(--surface-hover);
+    border: 2px solid var(--border);
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+    padding: 2px;
+}
+
+.toggle-switch.active {
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
+
+.toggle-switch-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 1.375rem;
+    height: 1.375rem;
+    background-color: white;
+    border-radius: 50%;
+    transition: left 0.3s ease, transform 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-switch.active .toggle-switch-knob {
+    left: calc(100% - 1.625rem);
+}
+
+.toggle-switch:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.toggle-switch:active .toggle-switch-knob {
+    transform: scale(1.1);
+}
+
+/* ── Buttons ── */
+button {
+    font-family: inherit;
+    font-size: 1rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background-color: var(--accent);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background-color: var(--surface-hover);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+    background-color: var(--border);
+    border-color: var(--text-muted);
+}
+
+.btn-danger {
+    background-color: var(--error);
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #DC2626;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* ── Button Group ── */
+.button-group {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.button-group button {
+    flex: 1;
+}
+
+/* ── Info Box ── */
+.info-box {
+    background-color: var(--surface-hover);
+    border-left: 4px solid var(--accent);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin: 1.5rem 0;
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+}
+
+/* ── Responsive Design ── */
+@media (max-width: 768px) {
+    header {
+        padding: 1rem;
+    }
+
+    main {
+        padding: 1rem;
+    }
+
+    .section,
+    .settings-panel {
+        padding: 1.5rem;
+    }
+
+    .settings-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .settings-item-content {
+        width: 100%;
+    }
+
+    .button-group {
+        flex-direction: column;
+    }
+
+    .button-group button {
+        width: 100%;
+    }
+}
+
+/* ── Smooth Theme Transition Suppression ── */
+html.prevent-transitions,
+html.prevent-transitions * {
+    transition: none !important;
+}

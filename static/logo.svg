@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60">
+  <defs>
+    <style>
+      .logo-text { font-family: system-ui, -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif; font-weight: 600; letter-spacing: -0.5px; }
+      .logo-icon-primary { fill: currentColor; }
+      .logo-icon-accent { stroke: currentColor; fill: none; }
+    </style>
+  </defs>
+
+  <!-- Connection Icon: Minimal, geometric design -->
+  <g id="connection-icon">
+    <!-- Left node (hand/point) -->
+    <circle class="logo-icon-primary" cx="12" cy="30" r="5.5" opacity="0.9"/>
+    
+    <!-- Right node (hand/point) -->
+    <circle class="logo-icon-primary" cx="28" cy="30" r="5.5" opacity="0.9"/>
+    
+    <!-- Connection bridge — thick, intentional line -->
+    <line class="logo-icon-accent" x1="17.5" y1="30" x2="22.5" y2="30" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <!-- Signal arc — represents data/energy flowing through connection -->
+    <path class="logo-icon-accent" d="M 15 23 Q 20 18 25 23" stroke-width="1.5" stroke-linecap="round" opacity="0.65"/>
+  </g>
+  
+  <!-- Brand Text -->
+  <text class="logo-text" x="42" y="40" font-size="24" fill="currentColor">SignConnect</text>
+</svg>

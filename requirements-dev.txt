@@ -1,0 +1,2 @@
+# Development-only dependencies (not required for running the application)
+pytest>=8.0.0

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Sign In{% endblock %}
+{% block meta_description %}Sign in to your SignConnect account for real-time AI sign language translation.{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="sc-auth-page">
+  <div class="sc-auth-blob sc-auth-blob--1"></div>
+  <div class="sc-auth-blob sc-auth-blob--2"></div>
+
+  <div class="sc-auth-card sc-reveal">
+    <a href="{{ url_for('main.index') }}" class="sc-auth-logo">
+      <div class="sc-logo-icon">
+        <svg class="sc-logo-hand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v0M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/>
+          <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+        </svg>
+      </div>
+      <span class="sc-logo-text" style="display:inline">Sign<span class="sc-logo-highlight">Connect</span></span>
+    </a>
+
+    <h1 class="sc-auth-title">Welcome back</h1>
+    <p class="sc-auth-subtitle">Sign in to continue translating</p>
+
+    {% if error %}
+    <div class="sc-auth-error" role="alert">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-auth-error-icon"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form class="sc-auth-form" method="POST" action="{{ url_for('auth.signin_post') }}" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="sc-form-group">
+        <label for="auth-email">Email address</label>
+        <input type="email" id="auth-email" name="email" placeholder="you@example.com" required autocomplete="email" class="sc-form-input">
+      </div>
+      <div class="sc-form-group">
+        <label for="auth-password">Password</label>
+        <input type="password" id="auth-password" name="password" placeholder="••••••••" required autocomplete="current-password" class="sc-form-input">
+      </div>
+      <button type="submit" class="sc-btn sc-btn--primary sc-auth-submit">Sign In</button>
+    </form>
+
+    <p class="sc-auth-footer-text">
+      Don't have an account? <a href="{{ url_for('auth.signup_get') }}" class="sc-form-link">Create one</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

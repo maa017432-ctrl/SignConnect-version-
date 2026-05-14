@@ -1,0 +1,65 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SignConnect — Docker Compose
+#
+# Quick start:
+#   docker compose up --build
+#   Open: http://localhost:5000
+#
+# Camera note:
+#   The app runs perfectly without a camera — placeholder frames are shown.
+#   To pass your webcam into the container on LINUX:
+#     Uncomment the `devices:` block below and adjust the path if needed.
+#   On WINDOWS with Docker Desktop (WSL2 backend):
+#     Camera passthrough is not natively supported. Run the app locally
+#     using .\run.ps1 for camera access.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: signconnect:latest
+    container_name: signconnect
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5000}:5000"
+    env_file:
+      - path: .env
+        required: false    # app works with defaults if .env is absent
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "5000"
+      DEBUG: "false"
+      LOG_LEVEL: "INFO"
+    volumes:
+      # Persist the SQLite database across restarts
+      - signconnect_db:/app/database
+      # Persist collected training data
+      - signconnect_data:/app/data
+      # Persist trained model + label map (so you can drop in a trained .h5)
+      - signconnect_models:/app/models
+      # Persist generated audio cache
+      - signconnect_audio:/app/static/audio
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/status')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+    # ── Camera passthrough (Linux only) ───────────────────────────────────
+    # Uncomment to expose the default webcam device inside the container:
+    # devices:
+    #   - /dev/video0:/dev/video0
+    # And add to environment:
+    # CAMERA_INDEX: "0"
+
+volumes:
+  signconnect_db:
+  signconnect_data:
+  signconnect_models:
+  signconnect_audio:

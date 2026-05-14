@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}History{% endblock %}
+{% block meta_description %}Browse the full translation history with audio playback.{% endblock %}
+
+{% block content %}
+<div class="sc-page">
+  <div class="sc-page-container">
+
+    <!-- Page Header -->
+    <div class="sc-page-header sc-reveal">
+      <div>
+        <h1 class="sc-page-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-page-title-icon"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Translation History
+        </h1>
+        <p class="sc-page-subtitle">Review past translations and replay audio</p>
+      </div>
+      <div class="sc-page-actions">
+        <button id="clear-history-page-btn" type="button" class="sc-btn sc-btn--sm sc-btn--danger">🗑 Clear All</button>
+      </div>
+    </div>
+
+    <div class="sc-history-layout">
+
+      <!-- Main: History Table -->
+      <div class="sc-history-main">
+        <div class="sc-widget sc-reveal" data-delay="0">
+          <div class="sc-widget-header">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-widget-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Recent Translations</h3>
+            <span class="sc-badge">{{ rows|length }} entries</span>
+          </div>
+          <div class="sc-widget-body sc-widget-body--table">
+            <table class="sc-table">
+              <thead>
+                <tr>
+                  <th>Label</th>
+                  <th>Confidence</th>
+                  <th>Audio</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in rows %}
+                <tr>
+                  <td><span class="sc-gesture-tag">{{ row['gesture_label'] }}</span></td>
+                  <td>
+                    {% if row['confidence'] is not none %}
+                    <div class="sc-conf-cell">
+                      <div class="sc-conf-bar-mini"><div class="sc-conf-fill-mini" style="width:{{ (row['confidence']*100)|round|int }}%"></div></div>
+                      <span>{{ "%.1f"|format(row['confidence'] * 100) }}%</span>
+                    </div>
+                    {% else %}—{% endif %}
+                  </td>
+                  <td>
+                    {% if row['audio_file'] %}
+                    <audio src="{{ url_for('static', filename='audio/' ~ row['audio_file']) }}" controls preload="none" class="sc-audio"></audio>
+                    {% else %}<span class="sc-muted">—</span>{% endif %}
+                  </td>
+                  <td><span class="sc-muted sc-timestamp" data-ts="{{ row['created_at'] }}">{{ row['created_at'] }}</span></td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="4" class="sc-empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="sc-empty-icon"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <p>No translation history yet.</p>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar Widgets -->
+      <div class="sc-history-sidebar">
+
+        <!-- Summary Widget -->
+        <div class="sc-widget sc-reveal" data-delay="100">
+          <div class="sc-widget-header">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-widget-icon"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Summary</h3>
+          </div>
+          <div class="sc-widget-body">
+            <div class="sc-stats-mini-grid">
+              <div class="sc-stat-mini"><span class="sc-stat-mini-val">{{ rows|length }}</span><span class="sc-stat-mini-lbl">Total</span></div>
+              <div class="sc-stat-mini">
+                <span class="sc-stat-mini-val">
+                  {% if rows|length > 0 %}
+                    {{ "%.0f"|format((rows|map(attribute='confidence')|select('ne', none)|list|sum / rows|selectattr('confidence', 'ne', none)|list|length * 100) if rows|selectattr('confidence', 'ne', none)|list|length > 0 else 0) }}%
+                  {% else %}0%{% endif %}
+                </span>
+                <span class="sc-stat-mini-lbl">Avg Conf.</span>
+              </div>
+              <div class="sc-stat-mini">
+                <span class="sc-stat-mini-val">{{ rows|selectattr('audio_file')|list|length }}</span>
+                <span class="sc-stat-mini-lbl">With Audio</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Export Widget -->
+        <div class="sc-widget sc-widget--dark sc-reveal" data-delay="200">
+          <div class="sc-widget-header">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-widget-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export</h3>
+          </div>
+          <div class="sc-widget-body">
+            <p class="sc-widget-desc">Download your translation history for records or accessibility logs.</p>
+            <button id="download-history-btn" class="sc-btn sc-btn--sm" style="width:100%;margin-top:12px">⬇ Download History CSV</button>
+          </div>
+        </div>
+
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+<script>
+(function () {
+  // ── Timestamp formatting ──────────────────────────────────────
+  document.querySelectorAll('.sc-timestamp').forEach(function (el) {
+    var raw = el.dataset.ts;
+    if (!raw) return;
+    try {
+      var date = new Date(raw.replace(' ', 'T') + 'Z');
+      var now = Date.now();
+      var diff = Math.floor((now - date.getTime()) / 1000);
+      var text;
+      if (diff < 60) text = 'Just now';
+      else if (diff < 3600) text = Math.floor(diff / 60) + 'm ago';
+      else if (diff < 86400) text = Math.floor(diff / 3600) + 'h ago';
+      else text = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      el.textContent = text;
+      el.title = date.toLocaleString();
+    } catch (e) { /* leave raw string */ }
+  });
+
+  // ── CSV Export ──────────────────────────────────────────────
+  var exportBtn = document.getElementById('download-history-btn');
+  var clearBtn = document.getElementById('clear-history-page-btn');
+  var csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+
+  if (exportBtn) {
+    exportBtn.addEventListener('click', async function () {
+      exportBtn.textContent = '⏳ Preparing…';
+      exportBtn.disabled = true;
+      try {
+        const res = await fetch('/api/export_history');
+        if (!res.ok) throw new Error('Server error ' + res.status);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'signconnect_history.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        exportBtn.textContent = '✅ Downloaded!';
+        setTimeout(function() {
+          exportBtn.textContent = '⬇ Download History CSV';
+          exportBtn.disabled = false;
+        }, 2000);
+      } catch (err) {
+        exportBtn.textContent = '❌ Download failed';
+        exportBtn.disabled = false;
+        setTimeout(function() { exportBtn.textContent = '⬇ Download History CSV'; }, 2000);
+      }
+    });
+  }
+
+  // ── Clear history confirmation ────────────────────────────────
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function () {
+      if (!confirm('Clear all translation history? This cannot be undone.')) return;
+      fetch('/api/history', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+        body: new URLSearchParams({ csrf_token: csrfToken }).toString(),
+      })
+        .then(function () { location.reload(); })
+        .catch(function () { alert('Failed to clear history.'); });
+    });
+  }
+})();
+</script>

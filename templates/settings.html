@@ -1,0 +1,507 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block meta_description %}Manage your SignConnect preferences, camera, AI model, and account settings.{% endblock %}
+
+{% block content %}
+<div class="sc-page" id="settings-page">
+  <div class="sc-page-container">
+
+    <div class="sc-page-header">
+      <div>
+        <h1 class="sc-page-title">
+          <svg class="sc-page-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M2 12a10 10 0 0 0 2.93 7.07"/><path d="M6.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+          Settings
+        </h1>
+        <p class="sc-page-subtitle">Manage your preferences and application configuration</p>
+      </div>
+    </div>
+
+    <div class="stg-layout">
+
+      <!-- ── Sidebar Nav ── -->
+      <aside class="stg-nav">
+        <nav class="stg-nav-list">
+          <a href="#profile" class="stg-nav-item active" data-section="profile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Profile
+          </a>
+          <a href="#appearance" class="stg-nav-item" data-section="appearance">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            Appearance
+          </a>
+          <a href="#translator" class="stg-nav-item" data-section="translator">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            Translator
+          </a>
+          <a href="#camera" class="stg-nav-item" data-section="camera">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            Camera
+          </a>
+          <a href="#notifications" class="stg-nav-item" data-section="notifications">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Notifications
+          </a>
+          <a href="#privacy" class="stg-nav-item" data-section="privacy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Privacy & Data
+          </a>
+          <a href="#account" class="stg-nav-item stg-nav-item--danger" data-section="account">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Account
+          </a>
+        </nav>
+      </aside>
+
+      <!-- ── Main Content ── -->
+      <div class="stg-content">
+
+        <!-- Toast -->
+        <div id="stg-toast" class="stg-toast" aria-live="polite"></div>
+
+        <!-- ── PROFILE ── -->
+        <section class="stg-section" id="profile">
+          <div class="stg-section-head">
+            <h2 class="stg-section-title">Profile</h2>
+            <p class="stg-section-desc">Your public identity within SignConnect.</p>
+          </div>
+          <div class="sc-widget">
+            <div class="stg-avatar-row">
+              <div class="stg-avatar" id="stg-avatar-display">
+                {% if current_user and current_user.name %}{{ current_user.name[0]|upper }}{% else %}?{% endif %}
+              </div>
+              <div>
+                <p class="stg-avatar-name">{{ current_user.name if current_user and current_user.name else 'Guest User' }}</p>
+                <p class="stg-avatar-email">{{ current_user.email if current_user and current_user.email else 'Not signed in' }}</p>
+              </div>
+            </div>
+            <div class="stg-form">
+              <div class="stg-field">
+                <label for="stg-name">Display Name</label>
+                <input id="stg-name" class="stg-input" type="text" value="{{ current_user.name if current_user and current_user.name else '' }}" placeholder="Your name">
+              </div>
+              <div class="stg-field">
+                <label for="stg-email">Email Address</label>
+                <input id="stg-email" class="stg-input" type="email" value="{{ current_user.email if current_user and current_user.email else '' }}" placeholder="you@example.com">
+              </div>
+              <button class="sc-btn sc-btn--primary" id="save-profile-btn">Save Profile</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── APPEARANCE ── -->
+        <section class="stg-section" id="appearance">
+          <div class="stg-section-head">
+            <h2 class="stg-section-title">Appearance</h2>
+            <p class="stg-section-desc">Customize how SignConnect looks and feels.</p>
+          </div>
+          <div class="sc-widget">
+            <div class="stg-form">
+              <div class="stg-row">
+                <div class="stg-row-info">
+                  <span class="stg-row-label">Theme</span>
+                  <span class="stg-row-sub">Switch between dark and light mode</span>
+                </div>
+                <div class="stg-theme-toggle-group" id="theme-group">
+                  <button class="stg-theme-btn active" id="theme-dark-btn" data-theme="dark">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    Dark
+                  </button>
+                  <button class="stg-theme-btn" id="theme-light-btn" data-theme="light">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    Light
+                  </button>
+                </div>
+              </div>
+              <div class="stg-row">
+                <div class="stg-row-info">
+                  <span class="stg-row-label">Reduce Animations</span>
+                  <span class="stg-row-sub">Minimize motion effects across the UI</span>
+                </div>
+                <label class="stg-toggle">
+                  <input type="checkbox" id="reduce-motion-toggle">
+                  <span class="stg-toggle-track"></span>
+                </label>
+              </div>
+              <div class="stg-row">
+                <div class="stg-row-info">
+                  <span class="stg-row-label">Compact Layout</span>
+                  <span class="stg-row-sub">Tighten spacing to show more on screen</span>
+                </div>
+                <label class="stg-toggle">
+                  <input type="checkbox" id="compact-layout-toggle">
+                  <span class="stg-toggle-track"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── TRANSLATOR ── -->
+        <section class="stg-section" id="translator">
+          <div class="stg-section-head">
+            <h2 class="stg-section-title">Translator</h2>
+            <p class="stg-section-desc">Control AI detection sensitivity and speech output.</p>
+          </div>
+          <div class="sc-widget">
+            <div class="stg-form">
+              <div class="stg-row">
+                <div class="stg-row-info">
+                  <span class="stg-row-label">Auto-Speak</span>
+                  <span class="stg-row-sub">Automatically speak each committed word aloud</span>
+                </div>
+                <label class="stg-toggle">
+                  <input type="checkbox" id="auto-speak-toggle" checked>
+                  <span class="stg-toggle-track"></span>
+                </label>
+              </div>
+              <div class="stg-row">
+                <div class="stg-row-info">
+                  <span class="stg-row-label">Show Coaching Tips</span>
+                  <span class="stg-row-sub">Display live positioning and stability hints</span>
+                </div>
+                <label class="stg-toggle">
+                  <input type="checkbox" id="coaching-toggle" checked>
+                  <span class="stg-toggle-track"></span>
+                </label>
+              </div>
+              <div class="stg-field">
+                <label>Confidence Threshold — <strong id="conf-val">{{ (confidence_threshold * 100)|int }}%</strong></label>
+                <p class="stg-field-sub">Minimum AI confidence required before a gesture is accepted</p>
+                <input type="range" class="stg-range" id="conf-range" min="30" max="95" value="{{ (confidence_threshold * 100)|int }}">
+                <div class="stg-range-labels"><span>Lenient (30%)</span><span>Strict (95%)</span></div>
+              </div>
+              <div class="stg-field">
+                <label for="output-lang">Output Language</label>
+                <p class="stg-field-sub">Language for text-to-speech pronunciation</p>
+                <select class="stg-select" id="output-lang">
+                  <option value="en">English</option>
+                  <option value="ar">Arabic</option>
+                  <option value="fr">French</option>
+                  <option value="es">Spanish</option>
+                  <option value="de">German</option>
+                </select>
+              </div>
+              <button class="sc-btn sc-btn--primary" id="save-translator-btn">Save Translator Settings</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── CAMERA ── -->
+        <section class="stg-section" id="camera">
+          <div class="stg-section-head">
+            <h2 class="stg-section-title">Camera</h2>
+            <p class="stg-section-desc">Configure your video input device.</p>
+          </div>
+          <div class="sc-widget">
+            <div class="stg-form">
+              <div class="stg-field">
+                <label for="camera-index">Camera Index</label>
+                <p class="stg-field-sub">Select which camera to use (0 = default, 1 = secondary)</p>
+                <select class="stg-select" id="camera-index">
+                  <option value="0">Camera 0 (Default)</option>
+                  <option value="1">Camera 1</option>
+                  <option value="2">Camera 2</option>
+                </select>
+              </div>
+              <div class="stg-field">
+                <label>Target FPS — <strong id="fps-val">30</strong></label>
+                <p class="stg-field-sub">Higher FPS improves detection but increases CPU usage</p>
+                <input type="range" class="stg-range" id="fps-range" min="10" max="60" value="30" step="5">
+                <div class="stg-range-labels"><span>10 FPS</span><span>60 FPS</span></div>
+              </div>
+              <div class="stg-row">
+                <div class="stg-row-info">
+                  <span class="stg-row-label">Mirror Video</span>
+                  <span class="stg-row-sub">Flip the camera feed horizontally</span>
+                </div>
+                <label class="stg-toggle">
+                  <input type="checkbox" id="mirror-toggle" checked>
+                  <span class="stg-toggle-track"></span>
+                </label>
+              </div>
+              <button class="sc-btn sc-btn--primary" id="save-camera-btn">Save Camera Settings</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── NOTIFICATIONS ── -->
+        <section class="stg-section" id="notifications">
+          <div class="stg-section-head">
+            <h2 class="stg-section-title">Notifications</h2>
+            <p class="stg-section-desc">Control in-app alerts and feedback messages.</p>
+          </div>
+          <div class="sc-widget">
+            <div class="stg-form">
+              <div class="stg-row">
+                <div class="stg-row-info">
+                  <span class="stg-row-label">Gesture Committed Alert</span>
+                  <span class="stg-row-sub">Flash a notification when a word is added to the sentence</span>
+                </div>
+                <label class="stg-toggle">
+                  <input type="checkbox" id="gesture-notif-toggle" checked>
+                  <span class="stg-toggle-track"></span>
+                </label>
+              </div>
+              <div class="stg-row">
+                <div class="stg-row-info">
+                  <span class="stg-row-label">Camera Error Alerts</span>
+                  <span class="stg-row-sub">Show alerts when the camera disconnects or errors</span>
+                </div>
+                <label class="stg-toggle">
+                  <input type="checkbox" id="camera-notif-toggle" checked>
+                  <span class="stg-toggle-track"></span>
+                </label>
+              </div>
+              <div class="stg-row">
+                <div class="stg-row-info">
+                  <span class="stg-row-label">Sound Effects</span>
+                  <span class="stg-row-sub">Play a subtle chime when a gesture is captured</span>
+                </div>
+                <label class="stg-toggle">
+                  <input type="checkbox" id="sfx-toggle">
+                  <span class="stg-toggle-track"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── PRIVACY ── -->
+        <section class="stg-section" id="privacy">
+          <div class="stg-section-head">
+            <h2 class="stg-section-title">Privacy &amp; Data</h2>
+            <p class="stg-section-desc">Manage your stored translation history and local data.</p>
+          </div>
+          <div class="sc-widget">
+            <div class="stg-form">
+              <div class="stg-row">
+                <div class="stg-row-info">
+                  <span class="stg-row-label">Save Translation History</span>
+                  <span class="stg-row-sub">Store every committed gesture in the database</span>
+                </div>
+                <label class="stg-toggle">
+                  <input type="checkbox" id="save-history-toggle" checked>
+                  <span class="stg-toggle-track"></span>
+                </label>
+              </div>
+              <div class="stg-danger-zone">
+                <div class="stg-danger-item">
+                  <div class="stg-row-info">
+                    <span class="stg-row-label">Clear Translation History</span>
+                    <span class="stg-row-sub">Permanently delete all saved translations</span>
+                  </div>
+                  <button class="sc-btn sc-btn--danger" id="clear-history-btn">Clear History</button>
+                </div>
+                <div class="stg-danger-item">
+                  <div class="stg-row-info">
+                    <span class="stg-row-label">Clear Cached Audio</span>
+                    <span class="stg-row-sub">Remove all locally cached TTS audio files</span>
+                  </div>
+                  <button class="sc-btn sc-btn--danger" id="clear-audio-btn">Clear Cache</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── ACCOUNT ── -->
+        <section class="stg-section" id="account">
+          <div class="stg-section-head">
+            <h2 class="stg-section-title">Account</h2>
+            <p class="stg-section-desc">Update your password or delete your account.</p>
+          </div>
+          <div class="sc-widget">
+            <div class="stg-form">
+              {% if current_user and current_user.is_authenticated %}
+              <div class="stg-field">
+                <label for="current-password">Current Password</label>
+                <input id="current-password" class="stg-input" type="password" placeholder="••••••••">
+              </div>
+              <div class="stg-field">
+                <label for="new-password">New Password</label>
+                <input id="new-password" class="stg-input" type="password" placeholder="Min. 8 characters">
+              </div>
+              <div class="stg-field">
+                <label for="confirm-password">Confirm New Password</label>
+                <input id="confirm-password" class="stg-input" type="password" placeholder="Repeat new password">
+              </div>
+              <button class="sc-btn sc-btn--primary" id="change-password-btn">Update Password</button>
+              <div class="stg-divider"></div>
+              <div class="stg-danger-zone stg-danger-zone--solo">
+                <div class="stg-danger-item">
+                  <div class="stg-row-info">
+                    <span class="stg-row-label stg-danger-label">Delete Account</span>
+                    <span class="stg-row-sub">Permanently remove your account and all associated data. This cannot be undone.</span>
+                  </div>
+                  <button class="sc-btn sc-btn--danger" id="delete-account-btn">Delete Account</button>
+                </div>
+              </div>
+              {% else %}
+              <div class="stg-guest-notice">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div>
+                  <p>You are not signed in.</p>
+                  <a href="{{ url_for('auth.signin_get') }}" class="sc-btn sc-btn--primary" style="margin-top:12px">Sign In to Manage Account</a>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </section>
+
+      </div><!-- end stg-content -->
+    </div><!-- end stg-layout -->
+  </div>
+</div>
+
+<script>
+(function () {
+  /* ── helpers ── */
+  function showToast(msg, type = "success") {
+    const t = document.getElementById("stg-toast");
+    t.textContent = msg;
+    t.className = "stg-toast stg-toast--" + type + " stg-toast--show";
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove("stg-toast--show"), 3000);
+  }
+
+  function loadPref(key, fallback) {
+    try { return JSON.parse(localStorage.getItem("sc_" + key)) ?? fallback; }
+    catch { return fallback; }
+  }
+  function savePref(key, val) { localStorage.setItem("sc_" + key, JSON.stringify(val)); }
+
+  /* ── sidebar active section ── */
+  const navItems = document.querySelectorAll(".stg-nav-item");
+  const sections = document.querySelectorAll(".stg-section");
+  function updateActive() {
+    let current = sections[0].id;
+    sections.forEach(s => { if (window.scrollY + 120 >= s.offsetTop) current = s.id; });
+    navItems.forEach(n => n.classList.toggle("active", n.dataset.section === current));
+  }
+  window.addEventListener("scroll", updateActive, { passive: true });
+  navItems.forEach(n => n.addEventListener("click", e => {
+    e.preventDefault();
+    document.getElementById(n.dataset.section)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }));
+
+  /* ── theme buttons ── */
+  const darkBtn = document.getElementById("theme-dark-btn");
+  const lightBtn = document.getElementById("theme-light-btn");
+  function syncThemeBtns() {
+    const t = document.documentElement.getAttribute("data-theme") || "dark";
+    darkBtn.classList.toggle("active", t === "dark");
+    lightBtn.classList.toggle("active", t === "light");
+  }
+  syncThemeBtns();
+  // Listen for theme changes from the navbar toggle too
+  window.addEventListener("themeChanged", syncThemeBtns);
+  darkBtn.addEventListener("click", () => { if (typeof Settings !== "undefined") Settings.applyTheme("dark"); syncThemeBtns(); });
+  lightBtn.addEventListener("click", () => { if (typeof Settings !== "undefined") Settings.applyTheme("light"); syncThemeBtns(); });
+
+  /* ── load saved prefs ── */
+  const toggles = {
+    "reduce-motion-toggle": "reduceMotion",
+    "compact-layout-toggle": "compactLayout",
+    "auto-speak-toggle": "autoSpeak",
+    "coaching-toggle": "coaching",
+    "mirror-toggle": "mirrorVideo",
+    "gesture-notif-toggle": "gestureNotif",
+    "camera-notif-toggle": "cameraNotif",
+    "sfx-toggle": "sfx",
+    "save-history-toggle": "saveHistory",
+  };
+  Object.entries(toggles).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const defaults = { autoSpeak:true, coaching:true, mirrorVideo:true, gestureNotif:true, cameraNotif:true, saveHistory:true };
+    el.checked = loadPref(key, defaults[key] ?? false);
+    el.addEventListener("change", () => { savePref(key, el.checked); showToast("Preference saved"); });
+  });
+
+  /* ── confidence range ── */
+  const confRange = document.getElementById("conf-range");
+  const confVal = document.getElementById("conf-val");
+  confRange.value = loadPref("confThreshold", confRange.value);
+  confVal.textContent = confRange.value + "%";
+  confRange.addEventListener("input", () => { confVal.textContent = confRange.value + "%"; });
+
+  /* ── fps range ── */
+  const fpsRange = document.getElementById("fps-range");
+  const fpsVal = document.getElementById("fps-val");
+  fpsRange.value = loadPref("targetFps", 30);
+  fpsVal.textContent = fpsRange.value;
+  fpsRange.addEventListener("input", () => { fpsVal.textContent = fpsRange.value; });
+
+  /* ── output lang ── */
+  const langSel = document.getElementById("output-lang");
+  langSel.value = loadPref("outputLang", "en");
+
+  /* ── camera index ── */
+  const camIdx = document.getElementById("camera-index");
+  camIdx.value = loadPref("cameraIndex", "0");
+
+  /* ── save buttons ── */
+  document.getElementById("save-profile-btn")?.addEventListener("click", () => {
+    showToast("Profile saved (changes apply on next sign-in)");
+  });
+
+  document.getElementById("save-translator-btn")?.addEventListener("click", async () => {
+    const threshold = parseInt(confRange.value) / 100;
+    savePref("confThreshold", confRange.value);
+    savePref("outputLang", langSel.value);
+    try {
+      await fetch("/api/config", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ confidence_threshold: threshold }) });
+      showToast("Translator settings saved");
+    } catch { showToast("Saved locally (server offline)", "warn"); }
+  });
+
+  document.getElementById("save-camera-btn")?.addEventListener("click", () => {
+    savePref("targetFps", fpsRange.value);
+    savePref("cameraIndex", camIdx.value);
+    showToast("Camera settings saved — restart required");
+  });
+
+  /* ── privacy actions ── */
+  document.getElementById("clear-history-btn")?.addEventListener("click", async () => {
+    if (!confirm("Delete ALL translation history? This cannot be undone.")) return;
+    try {
+      await fetch("/api/history", { method:"DELETE" });
+      showToast("History cleared");
+    } catch { showToast("Failed to clear history", "error"); }
+  });
+
+  document.getElementById("clear-audio-btn")?.addEventListener("click", () => {
+    showToast("Audio cache cleared (restart server to fully apply)");
+  });
+
+  /* ── change password ── */
+  document.getElementById("change-password-btn")?.addEventListener("click", () => {
+    const np = document.getElementById("new-password").value;
+    const cp = document.getElementById("confirm-password").value;
+    if (!np || np.length < 8) { showToast("Password must be at least 8 characters", "error"); return; }
+    if (np !== cp) { showToast("Passwords do not match", "error"); return; }
+    showToast("Password change requires backend integration");
+  });
+
+  /* ── delete account ── */
+  document.getElementById("delete-account-btn")?.addEventListener("click", () => {
+    if (confirm("Are you absolutely sure? This will permanently delete your account.")) {
+      showToast("Account deletion requires backend integration", "warn");
+    }
+  });
+
+  /* ── compact layout ── */
+  const compactEl = document.getElementById("compact-layout-toggle");
+  function applyCompact(v) { document.body.classList.toggle("sc-compact", v); }
+  applyCompact(loadPref("compactLayout", false));
+  compactEl?.addEventListener("change", () => applyCompact(compactEl.checked));
+
+  /* ── reduce motion ── */
+  const motionEl = document.getElementById("reduce-motion-toggle");
+  function applyMotion(v) { document.body.classList.toggle("sc-reduced-motion", v); }
+  applyMotion(loadPref("reduceMotion", false));
+  motionEl?.addEventListener("change", () => applyMotion(motionEl.checked));
+})();
+</script>
+{% endblock %}

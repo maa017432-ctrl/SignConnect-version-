@@ -1,0 +1,490 @@
+{
+  "en": {
+    "nav": {
+      "home": "Home",
+      "translator": "Translator",
+      "dictionary": "Dictionary",
+      "history": "History",
+      "settings": "Settings",
+      "signIn": "Sign In",
+      "signOut": "Sign Out"
+    },
+    "translator": {
+      "title": "Live Translator",
+      "subtitle": "Real-time ASL to English translation",
+      "connecting": "Connecting to camera…",
+      "cameraUnavailable": "Camera unavailable",
+      "sentence": "Sentence",
+      "clearSentence": "Clear Sentence",
+      "deleteWord": "Delete Last Word",
+      "speak": "Speak",
+      "demoMode": "Demo Mode"
+    },
+    "dictionary": {
+      "title": "Sign Dictionary",
+      "subtitle": "Browse all supported ASL gestures",
+      "search": "Search signs…",
+      "noResults": "No signs found"
+    },
+    "history": {
+      "title": "Translation History",
+      "subtitle": "Your recent sign language translations",
+      "empty": "No translations yet",
+      "clearAll": "Clear All"
+    },
+    "settings": {
+      "title": "Settings",
+      "subtitle": "Customize your SignConnect experience",
+      "language": "Language",
+      "theme": "Theme",
+      "dark": "Dark",
+      "light": "Light",
+      "confidenceThreshold": "Confidence Threshold",
+      "save": "Save Settings"
+    },
+    "status": {
+      "camera": "Camera",
+      "model": "Model",
+      "tts": "Text-to-Speech",
+      "mediapipe": "MediaPipe",
+      "online": "Online",
+      "offline": "Offline",
+      "demoMode": "Demo Mode"
+    },
+    "common": {
+      "loading": "Loading…",
+      "error": "An error occurred",
+      "retry": "Retry",
+      "close": "Close",
+      "cancel": "Cancel",
+      "confirm": "Confirm"
+    }
+  },
+  "ar": {
+    "nav": {
+      "home": "الرئيسية",
+      "translator": "المترجم",
+      "dictionary": "القاموس",
+      "history": "السجل",
+      "settings": "الإعدادات",
+      "signIn": "تسجيل الدخول",
+      "signOut": "تسجيل الخروج"
+    },
+    "translator": {
+      "title": "المترجم المباشر",
+      "subtitle": "ترجمة لغة الإشارة الأمريكية في الوقت الفعلي",
+      "connecting": "جارٍ الاتصال بالكاميرا…",
+      "cameraUnavailable": "الكاميرا غير متاحة",
+      "sentence": "الجملة",
+      "clearSentence": "مسح الجملة",
+      "deleteWord": "حذف الكلمة الأخيرة",
+      "speak": "نطق",
+      "demoMode": "وضع العرض التوضيحي"
+    },
+    "dictionary": {
+      "title": "قاموس الإشارات",
+      "subtitle": "تصفح جميع إيماءات لغة الإشارة الأمريكية",
+      "search": "ابحث عن الإشارات…",
+      "noResults": "لم يتم العثور على إشارات"
+    },
+    "history": {
+      "title": "سجل الترجمة",
+      "subtitle": "ترجمات لغة الإشارة الأخيرة",
+      "empty": "لا توجد ترجمات بعد",
+      "clearAll": "مسح الكل"
+    },
+    "settings": {
+      "title": "الإعدادات",
+      "subtitle": "تخصيص تجربة SignConnect",
+      "language": "اللغة",
+      "theme": "المظهر",
+      "dark": "داكن",
+      "light": "فاتح",
+      "confidenceThreshold": "عتبة الثقة",
+      "save": "حفظ الإعدادات"
+    },
+    "status": {
+      "camera": "الكاميرا",
+      "model": "النموذج",
+      "tts": "تحويل النص إلى كلام",
+      "mediapipe": "ميديابايب",
+      "online": "متصل",
+      "offline": "غير متصل",
+      "demoMode": "وضع العرض التوضيحي"
+    },
+    "common": {
+      "loading": "جارٍ التحميل…",
+      "error": "حدث خطأ",
+      "retry": "إعادة المحاولة",
+      "close": "إغلاق",
+      "cancel": "إلغاء",
+      "confirm": "تأكيد"
+    }
+  },
+  "fr": {
+    "nav": {
+      "home": "Accueil",
+      "translator": "Traducteur",
+      "dictionary": "Dictionnaire",
+      "history": "Historique",
+      "settings": "Paramètres",
+      "signIn": "Se connecter",
+      "signOut": "Se déconnecter"
+    },
+    "translator": {
+      "title": "Traducteur en direct",
+      "subtitle": "Traduction ASL en anglais en temps réel",
+      "connecting": "Connexion à la caméra…",
+      "cameraUnavailable": "Caméra indisponible",
+      "sentence": "Phrase",
+      "clearSentence": "Effacer la phrase",
+      "deleteWord": "Supprimer le dernier mot",
+      "speak": "Parler",
+      "demoMode": "Mode démo"
+    },
+    "dictionary": {
+      "title": "Dictionnaire de signes",
+      "subtitle": "Parcourir tous les gestes ASL pris en charge",
+      "search": "Rechercher des signes…",
+      "noResults": "Aucun signe trouvé"
+    },
+    "history": {
+      "title": "Historique des traductions",
+      "subtitle": "Vos traductions récentes en langue des signes",
+      "empty": "Pas encore de traductions",
+      "clearAll": "Tout effacer"
+    },
+    "settings": {
+      "title": "Paramètres",
+      "subtitle": "Personnalisez votre expérience SignConnect",
+      "language": "Langue",
+      "theme": "Thème",
+      "dark": "Sombre",
+      "light": "Clair",
+      "confidenceThreshold": "Seuil de confiance",
+      "save": "Enregistrer les paramètres"
+    },
+    "status": {
+      "camera": "Caméra",
+      "model": "Modèle",
+      "tts": "Synthèse vocale",
+      "mediapipe": "MediaPipe",
+      "online": "En ligne",
+      "offline": "Hors ligne",
+      "demoMode": "Mode démo"
+    },
+    "common": {
+      "loading": "Chargement…",
+      "error": "Une erreur s'est produite",
+      "retry": "Réessayer",
+      "close": "Fermer",
+      "cancel": "Annuler",
+      "confirm": "Confirmer"
+    }
+  },
+  "es": {
+    "nav": {
+      "home": "Inicio",
+      "translator": "Traductor",
+      "dictionary": "Diccionario",
+      "history": "Historial",
+      "settings": "Configuración",
+      "signIn": "Iniciar sesión",
+      "signOut": "Cerrar sesión"
+    },
+    "translator": {
+      "title": "Traductor en vivo",
+      "subtitle": "Traducción de ASL al inglés en tiempo real",
+      "connecting": "Conectando a la cámara…",
+      "cameraUnavailable": "Cámara no disponible",
+      "sentence": "Oración",
+      "clearSentence": "Borrar oración",
+      "deleteWord": "Eliminar última palabra",
+      "speak": "Hablar",
+      "demoMode": "Modo demo"
+    },
+    "dictionary": {
+      "title": "Diccionario de señas",
+      "subtitle": "Explorar todos los gestos ASL compatibles",
+      "search": "Buscar señas…",
+      "noResults": "No se encontraron señas"
+    },
+    "history": {
+      "title": "Historial de traducciones",
+      "subtitle": "Sus traducciones recientes de lenguaje de señas",
+      "empty": "Aún no hay traducciones",
+      "clearAll": "Borrar todo"
+    },
+    "settings": {
+      "title": "Configuración",
+      "subtitle": "Personalice su experiencia con SignConnect",
+      "language": "Idioma",
+      "theme": "Tema",
+      "dark": "Oscuro",
+      "light": "Claro",
+      "confidenceThreshold": "Umbral de confianza",
+      "save": "Guardar configuración"
+    },
+    "status": {
+      "camera": "Cámara",
+      "model": "Modelo",
+      "tts": "Texto a voz",
+      "mediapipe": "MediaPipe",
+      "online": "En línea",
+      "offline": "Sin conexión",
+      "demoMode": "Modo demo"
+    },
+    "common": {
+      "loading": "Cargando…",
+      "error": "Ocurrió un error",
+      "retry": "Reintentar",
+      "close": "Cerrar",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar"
+    }
+  },
+  "de": {
+    "nav": {
+      "home": "Startseite",
+      "translator": "Übersetzer",
+      "dictionary": "Wörterbuch",
+      "history": "Verlauf",
+      "settings": "Einstellungen",
+      "signIn": "Anmelden",
+      "signOut": "Abmelden"
+    },
+    "translator": {
+      "title": "Live-Übersetzer",
+      "subtitle": "Echtzeit-Übersetzung von ASL ins Englische",
+      "connecting": "Verbindung zur Kamera…",
+      "cameraUnavailable": "Kamera nicht verfügbar",
+      "sentence": "Satz",
+      "clearSentence": "Satz löschen",
+      "deleteWord": "Letztes Wort löschen",
+      "speak": "Sprechen",
+      "demoMode": "Demo-Modus"
+    },
+    "dictionary": {
+      "title": "Gebärdenwörterbuch",
+      "subtitle": "Alle unterstützten ASL-Gesten durchsuchen",
+      "search": "Gebärden suchen…",
+      "noResults": "Keine Gebärden gefunden"
+    },
+    "history": {
+      "title": "Übersetzungsverlauf",
+      "subtitle": "Ihre letzten Gebärdensprachübersetzungen",
+      "empty": "Noch keine Übersetzungen",
+      "clearAll": "Alle löschen"
+    },
+    "settings": {
+      "title": "Einstellungen",
+      "subtitle": "Passen Sie Ihre SignConnect-Erfahrung an",
+      "language": "Sprache",
+      "theme": "Design",
+      "dark": "Dunkel",
+      "light": "Hell",
+      "confidenceThreshold": "Konfidenzgrenzwert",
+      "save": "Einstellungen speichern"
+    },
+    "status": {
+      "camera": "Kamera",
+      "model": "Modell",
+      "tts": "Text-zu-Sprache",
+      "mediapipe": "MediaPipe",
+      "online": "Online",
+      "offline": "Offline",
+      "demoMode": "Demo-Modus"
+    },
+    "common": {
+      "loading": "Laden…",
+      "error": "Ein Fehler ist aufgetreten",
+      "retry": "Erneut versuchen",
+      "close": "Schließen",
+      "cancel": "Abbrechen",
+      "confirm": "Bestätigen"
+    }
+  },
+  "zh": {
+    "nav": {
+      "home": "首页",
+      "translator": "翻译器",
+      "dictionary": "词典",
+      "history": "历史",
+      "settings": "设置",
+      "signIn": "登录",
+      "signOut": "登出"
+    },
+    "translator": {
+      "title": "实时翻译器",
+      "subtitle": "美国手语实时翻译",
+      "connecting": "正在连接摄像头…",
+      "cameraUnavailable": "摄像头不可用",
+      "sentence": "句子",
+      "clearSentence": "清除句子",
+      "deleteWord": "删除最后一个词",
+      "speak": "朗读",
+      "demoMode": "演示模式"
+    },
+    "dictionary": {
+      "title": "手语词典",
+      "subtitle": "浏览所有支持的美国手语手势",
+      "search": "搜索手势…",
+      "noResults": "未找到手势"
+    },
+    "history": {
+      "title": "翻译历史",
+      "subtitle": "您最近的手语翻译",
+      "empty": "暂无翻译",
+      "clearAll": "清除全部"
+    },
+    "settings": {
+      "title": "设置",
+      "subtitle": "自定义您的 SignConnect 体验",
+      "language": "语言",
+      "theme": "主题",
+      "dark": "深色",
+      "light": "浅色",
+      "confidenceThreshold": "置信度阈值",
+      "save": "保存设置"
+    },
+    "status": {
+      "camera": "摄像头",
+      "model": "模型",
+      "tts": "文字转语音",
+      "mediapipe": "MediaPipe",
+      "online": "在线",
+      "offline": "离线",
+      "demoMode": "演示模式"
+    },
+    "common": {
+      "loading": "加载中…",
+      "error": "发生错误",
+      "retry": "重试",
+      "close": "关闭",
+      "cancel": "取消",
+      "confirm": "确认"
+    }
+  },
+  "ja": {
+    "nav": {
+      "home": "ホーム",
+      "translator": "翻訳機",
+      "dictionary": "辞書",
+      "history": "履歴",
+      "settings": "設定",
+      "signIn": "サインイン",
+      "signOut": "サインアウト"
+    },
+    "translator": {
+      "title": "ライブ翻訳機",
+      "subtitle": "ASLのリアルタイム英語翻訳",
+      "connecting": "カメラに接続中…",
+      "cameraUnavailable": "カメラが使用できません",
+      "sentence": "文章",
+      "clearSentence": "文章をクリア",
+      "deleteWord": "最後の単語を削除",
+      "speak": "読み上げ",
+      "demoMode": "デモモード"
+    },
+    "dictionary": {
+      "title": "手話辞典",
+      "subtitle": "サポートされているすべてのASLジェスチャーを参照",
+      "search": "手話を検索…",
+      "noResults": "手話が見つかりません"
+    },
+    "history": {
+      "title": "翻訳履歴",
+      "subtitle": "最近の手話翻訳",
+      "empty": "まだ翻訳がありません",
+      "clearAll": "すべてクリア"
+    },
+    "settings": {
+      "title": "設定",
+      "subtitle": "SignConnectのエクスペリエンスをカスタマイズ",
+      "language": "言語",
+      "theme": "テーマ",
+      "dark": "ダーク",
+      "light": "ライト",
+      "confidenceThreshold": "信頼度閾値",
+      "save": "設定を保存"
+    },
+    "status": {
+      "camera": "カメラ",
+      "model": "モデル",
+      "tts": "テキスト読み上げ",
+      "mediapipe": "MediaPipe",
+      "online": "オンライン",
+      "offline": "オフライン",
+      "demoMode": "デモモード"
+    },
+    "common": {
+      "loading": "読み込み中…",
+      "error": "エラーが発生しました",
+      "retry": "再試行",
+      "close": "閉じる",
+      "cancel": "キャンセル",
+      "confirm": "確認"
+    }
+  },
+  "ko": {
+    "nav": {
+      "home": "홈",
+      "translator": "번역기",
+      "dictionary": "사전",
+      "history": "기록",
+      "settings": "설정",
+      "signIn": "로그인",
+      "signOut": "로그아웃"
+    },
+    "translator": {
+      "title": "실시간 번역기",
+      "subtitle": "ASL 실시간 영어 번역",
+      "connecting": "카메라 연결 중…",
+      "cameraUnavailable": "카메라를 사용할 수 없습니다",
+      "sentence": "문장",
+      "clearSentence": "문장 지우기",
+      "deleteWord": "마지막 단어 삭제",
+      "speak": "말하기",
+      "demoMode": "데모 모드"
+    },
+    "dictionary": {
+      "title": "수어 사전",
+      "subtitle": "지원되는 모든 ASL 제스처 찾아보기",
+      "search": "수어 검색…",
+      "noResults": "수어를 찾을 수 없습니다"
+    },
+    "history": {
+      "title": "번역 기록",
+      "subtitle": "최근 수어 번역",
+      "empty": "번역이 없습니다",
+      "clearAll": "모두 지우기"
+    },
+    "settings": {
+      "title": "설정",
+      "subtitle": "SignConnect 경험을 사용자 지정하세요",
+      "language": "언어",
+      "theme": "테마",
+      "dark": "다크",
+      "light": "라이트",
+      "confidenceThreshold": "신뢰도 임계값",
+      "save": "설정 저장"
+    },
+    "status": {
+      "camera": "카메라",
+      "model": "모델",
+      "tts": "텍스트 음성 변환",
+      "mediapipe": "MediaPipe",
+      "online": "온라인",
+      "offline": "오프라인",
+      "demoMode": "데모 모드"
+    },
+    "common": {
+      "loading": "로딩 중…",
+      "error": "오류가 발생했습니다",
+      "retry": "재시도",
+      "close": "닫기",
+      "cancel": "취소",
+      "confirm": "확인"
+    }
+  }
+}

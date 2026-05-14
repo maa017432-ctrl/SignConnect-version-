@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SignConnect Logo Design</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: system-ui, -apple-system, "SF Pro Display", sans-serif;
+            background: #000;
+            color: #f5f5f7;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+        
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        h1 { font-size: 42px; margin-bottom: 12px; font-weight: 700; }
+        .subtitle { font-size: 18px; color: #a1a1a6; margin-bottom: 40px; }
+        
+        section { margin: 60px 0; }
+        section h2 { font-size: 28px; font-weight: 600; margin-bottom: 24px; }
+        
+        /* Logo Showcase */
+        .showcase {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: center;
+            padding: 40px;
+            background: #1d1d1f;
+            border-radius: 18px;
+            margin: 40px 0;
+        }
+        
+        .showcase svg { width: 100%; max-width: 300px; }
+        
+        .showcase-text h3 { font-size: 24px; margin-bottom: 16px; }
+        .showcase-text p { margin-bottom: 12px; color: #a1a1a6; }
+        
+        /* Full Logo Display */
+        .logo-display {
+            background: #1d1d1f;
+            padding: 60px;
+            border-radius: 18px;
+            text-align: center;
+            margin: 40px 0;
+        }
+        
+        .logo-display h3 { margin-bottom: 24px; }
+        .logo-display svg { max-width: 600px; height: auto; }
+        
+        /* Icon Grid */
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin: 40px 0;
+        }
+        
+        .icon-item {
+            background: #1d1d1f;
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .icon-item svg { width: 100px; height: 100px; margin-bottom: 16px; }
+        .icon-item h4 { margin-bottom: 8px; font-size: 16px; }
+        .icon-item p { font-size: 14px; color: #6e6e73; }
+        
+        /* Design Details */
+        .details {
+            background: #1d1d1f;
+            padding: 32px;
+            border-radius: 12px;
+            margin: 40px 0;
+        }
+        
+        .detail-row {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #3a3a3c;
+        }
+        
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { font-weight: 600; color: #2997ff; }
+        
+        /* Code Block */
+        code {
+            background: #000;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: "SF Mono", monospace;
+            font-size: 13px;
+            color: #32d74b;
+        }
+        
+        @media (max-width: 768px) {
+            .showcase, .icon-grid { grid-template-columns: 1fr; }
+            h1 { font-size: 32px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SignConnect Logo Design</h1>
+        <p class="subtitle">A modern, minimal visual identity for real-time sign language translation</p>
+        
+        <!-- Full Logo Showcase -->
+        <section class="logo-display">
+            <h3>Full Logo (Dark Theme)</h3>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60" style="filter: brightness(1.1);">
+                <g id="connection-icon">
+                    <circle cx="12" cy="30" r="5.5" fill="currentColor" opacity="0.9"/>
+                    <circle cx="28" cy="30" r="5.5" fill="currentColor" opacity="0.9"/>
+                    <line x1="17.5" y1="30" x2="22.5" y2="30" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+                    <path d="M 15 23 Q 20 18 25 23" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.65"/>
+                </g>
+                <text x="42" y="40" font-family="system-ui, -apple-system, 'SF Pro Display', sans-serif" font-size="24" font-weight="600" letter-spacing="-0.5" fill="currentColor">SignConnect</text>
+            </svg>
+        </section>
+        
+        <!-- Design Concept -->
+        <section>
+            <h2>Design Concept</h2>
+            <div class="showcase">
+                <div>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="200" height="200">
+                        <defs><style>.icon-node { fill: #2997ff; } .icon-bridge { stroke: #2997ff; fill: none; stroke-linecap: round; }</style></defs>
+                        <circle class="icon-node" cx="20" cy="32" r="7" opacity="0.95"/>
+                        <circle class="icon-node" cx="44" cy="32" r="7" opacity="0.95"/>
+                        <line class="icon-bridge" x1="27" y1="32" x2="37" y2="32" stroke-width="3.5"/>
+                        <path class="icon-bridge" d="M 22 22 Q 32 14 42 22" stroke-width="2" opacity="0.7"/>
+                        <path class="icon-bridge" d="M 20 18 Q 32 8 44 18" stroke-width="1.5" opacity="0.4"/>
+                    </svg>
+                </div>
+                <div class="showcase-text">
+                    <h3>Connection Philosophy</h3>
+                    <p>The logo represents the core mission: <strong>connecting people through sign language</strong>.</p>
+                    <p><strong>Two circles</strong> symbolize two parties (hands, people, nodes) establishing contact.</p>
+                    <p><strong>The bridge line</strong> is the intentional connection between them.</p>
+                    <p><strong>Signal arcs</strong> show data and communication flowing through this bridge.</p>
+                    <p>Minimal, geometric, and meaningful — every element serves a purpose.</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Logo Variations -->
+        <section>
+            <h2>Logo Variations</h2>
+            <div class="icon-grid">
+                <div class="icon-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+                        <circle cx="20" cy="32" r="7" fill="#2997ff" opacity="0.95"/>
+                        <circle cx="44" cy="32" r="7" fill="#2997ff" opacity="0.95"/>
+                        <line x1="27" y1="32" x2="37" y2="32" stroke="#2997ff" stroke-width="3.5" stroke-linecap="round"/>
+                        <path d="M 22 22 Q 32 14 42 22" stroke="#2997ff" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.7"/>
+                        <path d="M 20 18 Q 32 8 44 18" stroke="#2997ff" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.4"/>
+                    </svg>
+                    <h4>Icon Mark</h4>
+                    <p>Favicon, app icons, UI elements</p>
+                </div>
+                <div class="icon-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="200" height="50">
+                        <g><circle cx="12" cy="30" r="5.5" fill="#2997ff" opacity="0.9"/><circle cx="28" cy="30" r="5.5" fill="#2997ff" opacity="0.9"/><line x1="17.5" y1="30" x2="22.5" y2="30" stroke="#2997ff" stroke-width="2.5" stroke-linecap="round"/><path d="M 15 23 Q 20 18 25 23" stroke="#2997ff" stroke-width="1.5" stroke-linecap="round" opacity="0.65"/></g>
+                        <text x="42" y="40" font-family="system-ui" font-size="24" font-weight="600" letter-spacing="-0.5" fill="#2997ff">SignConnect</text>
+                    </svg>
+                    <h4>Full Logo</h4>
+                    <p>Header, branding, product pages</p>
+                </div>
+                <div class="icon-item">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="160" height="40">
+                        <g><circle cx="12" cy="30" r="5.5" fill="#2997ff" opacity="0.9"/><circle cx="28" cy="30" r="5.5" fill="#2997ff" opacity="0.9"/><line x1="17.5" y1="30" x2="22.5" y2="30" stroke="#2997ff" stroke-width="2.5" stroke-linecap="round"/><path d="M 15 23 Q 20 18 25 23" stroke="#2997ff" stroke-width="1.5" stroke-linecap="round" opacity="0.65"/></g>
+                        <text x="42" y="40" font-family="system-ui" font-size="24" font-weight="600" letter-spacing="-0.5" fill="#2997ff">SignConnect</text>
+                    </svg>
+                    <h4>Horizontal</h4>
+                    <p>Landscape layouts, footers</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Design Details -->
+        <section>
+            <h2>Design Specifications</h2>
+            <div class="details">
+                <div class="detail-row">
+                    <div class="detail-label">Font Family</div>
+                    <div>System default (SF Pro Display on Apple, Segoe UI on Windows)</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Font Weight</div>
+                    <div>600 (Semi-bold) for modern, premium feel</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Letter Spacing</div>
+                    <div>-0.5px for tighter, contemporary look</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Icon Nodes</div>
+                    <div>Circles with radius 5.5, opacity 90-95% for depth</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Bridge Line</div>
+                    <div>Stroke width 2.5, full opacity, rounded caps</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Signal Arc</div>
+                    <div>Subtle accent (40-65% opacity) showing data flow</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Color Scheme</div>
+                    <div>Uses <code>currentColor</code> for theme support (light/dark)</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Hover State</div>
+                    <div>80% opacity with smooth transition (150ms)</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Brand Values -->
+        <section>
+            <h2>Brand Values</h2>
+            <div class="showcase">
+                <div class="showcase-text">
+                    <h3>✓ Minimal</h3>
+                    <p>Clean geometric shapes with no unnecessary elements.</p>
+                    <h3 style="margin-top: 24px;">✓ Flat Design</h3>
+                    <p>No gradients, shadows, or glow effects.</p>
+                    <h3 style="margin-top: 24px;">✓ Professional</h3>
+                    <p>Inspired by modern SaaS (Stripe, Linear, Vercel).</p>
+                </div>
+                <div class="showcase-text">
+                    <h3>✓ Meaningful</h3>
+                    <p>Every element represents the connection concept.</p>
+                    <h3 style="margin-top: 24px;">✓ Accessible</h3>
+                    <p>Works in all themes, high contrast, screen-reader friendly.</p>
+                    <h3 style="margin-top: 24px;">✓ Scalable</h3>
+                    <p>SVG format works from 16px favicon to large headers.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
