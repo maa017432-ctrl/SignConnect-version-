@@ -116,20 +116,37 @@
   // Landmark data keyed by lowercase label
   var gestureDB=null;
 
+  // Drawing color constants (matches SignConnect purple design system)
+  var COLOR_CANVAS_BG="#050816";
+  var COLOR_CONNECTION="rgba(139,92,246,0.55)";
+  var COLOR_TIP_GLOW="rgba(167,139,250,0.18)";
+  var COLOR_TIP_DOT="#a78bfa";
+  var COLOR_JOINT_DOT="#7c3aed";
+  var COLOR_DOT_STROKE="rgba(255,255,255,0.35)";
+
+  // MediaPipe hand landmark fingertip indices:
+  // 4=thumb tip, 8=index tip, 12=middle tip, 16=ring tip, 20=pinky tip
+  var FINGERTIP_INDICES=[4,8,12,16,20];
+
+  // Difficulty badge colors
+  var DIFFICULTY_COLORS={easy:"#22c55e",medium:"#f59e0b",hard:"#ef4444"};
+
   function loadGestureDB(cb){
     if(gestureDB){cb(gestureDB);return;}
     fetch("/static/data/gesture_references.json")
       .then(function(r){return r.json();})
       .then(function(data){gestureDB=data;cb(data);})
-      .catch(function(){gestureDB={};cb({});});
+      .catch(function(err){
+        console.error("[SignConnect] Failed to load gesture_references.json:", err);
+        gestureDB={};cb({});
+      });
   }
 
   function drawLandmarks(data){
     var W=canvas.width, H=canvas.height;
     ctx.clearRect(0,0,W,H);
 
-    // background
-    ctx.fillStyle="#050816";
+    ctx.fillStyle=COLOR_CANVAS_BG;
     ctx.fillRect(0,0,W,H);
 
     var lm=data.landmarks;
@@ -139,9 +156,9 @@
     var drawW=W-padding*2;
     var drawH=H-padding*2;
 
-    // connections
+    // Draw bone connections
     var conns=data.connections||[];
-    ctx.strokeStyle="rgba(139,92,246,0.55)";
+    ctx.strokeStyle=COLOR_CONNECTION;
     ctx.lineWidth=2;
     ctx.lineCap="round";
     conns.forEach(function(pair){
@@ -153,31 +170,28 @@
       ctx.stroke();
     });
 
-    // fingertip landmark indices (4,8,12,16,20) highlighted
-    var tips=[4,8,12,16,20];
-
+    // Draw landmark dots (fingertips larger with glow)
     lm.forEach(function(pt,i){
       var px=padding+pt.x*drawW;
       var py=padding+pt.y*drawH;
-      var isTip=tips.indexOf(i)!==-1;
+      var isTip=FINGERTIP_INDICES.indexOf(i)!==-1;
       var r=isTip?7:4.5;
 
-      // glow for tips
       if(isTip){
         ctx.beginPath();
         ctx.arc(px,py,r+4,0,Math.PI*2);
-        ctx.fillStyle="rgba(167,139,250,0.18)";
+        ctx.fillStyle=COLOR_TIP_GLOW;
         ctx.fill();
       }
 
       ctx.beginPath();
       ctx.arc(px,py,r,0,Math.PI*2);
-      ctx.fillStyle=isTip?"#a78bfa":"#7c3aed";
+      ctx.fillStyle=isTip?COLOR_TIP_DOT:COLOR_JOINT_DOT;
       ctx.fill();
 
       ctx.beginPath();
       ctx.arc(px,py,r,0,Math.PI*2);
-      ctx.strokeStyle="rgba(255,255,255,0.35)";
+      ctx.strokeStyle=COLOR_DOT_STROKE;
       ctx.lineWidth=1;
       ctx.stroke();
     });
@@ -193,7 +207,7 @@
     fallback.style.display="none";
     canvas.style.display="";
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle="#050816";
+    ctx.fillStyle=COLOR_CANVAS_BG;
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
     modal.setAttribute("aria-hidden","false");
@@ -206,8 +220,7 @@
       if(data){
         if(data.description){descEl.textContent=data.description;}
         if(data.difficulty){
-          var colors={easy:"#22c55e",medium:"#f59e0b",hard:"#ef4444"};
-          var c=colors[data.difficulty]||"#94a3b8";
+          var c=DIFFICULTY_COLORS[data.difficulty]||"#94a3b8";
           diffEl.innerHTML='<span class="sc-gesture-difficulty" style="color:'+c+'">'+
             data.difficulty.charAt(0).toUpperCase()+data.difficulty.slice(1)+' difficulty</span>';
         }
