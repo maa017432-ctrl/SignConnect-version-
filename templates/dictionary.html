@@ -55,8 +55,33 @@
   </div>
 </div>
 
+<!-- ── GESTURE MODAL ── -->
+<div id="gesture-modal" class="sc-gesture-modal" role="dialog" aria-modal="true" aria-labelledby="gesture-modal-title" aria-hidden="true">
+  <div class="sc-gesture-modal-backdrop" id="gesture-modal-backdrop"></div>
+  <div class="sc-gesture-modal-box">
+    <button class="sc-gesture-modal-close" id="gesture-modal-close" aria-label="Close modal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="sc-gesture-modal-header">
+      <div class="sc-gesture-modal-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+      </div>
+      <div>
+        <h2 id="gesture-modal-title" class="sc-gesture-modal-title">—</h2>
+        <p id="gesture-modal-desc" class="sc-gesture-modal-desc"></p>
+      </div>
+    </div>
+    <div class="sc-gesture-modal-canvas-wrap">
+      <canvas id="gesture-canvas" class="sc-gesture-canvas" width="320" height="320" aria-label="Hand landmark skeleton"></canvas>
+      <p id="gesture-canvas-fallback" class="sc-gesture-canvas-fallback" style="display:none">No landmark data available for this sign.</p>
+    </div>
+    <div id="gesture-modal-difficulty" class="sc-gesture-modal-footer"></div>
+  </div>
+</div>
+
 <script>
 (function(){
+  /* ── Search ── */
   var search=document.getElementById("dict-search");
   var cards=document.querySelectorAll(".sc-dict-card");
   var empty=document.getElementById("dict-no-results");
@@ -74,10 +99,149 @@
     if(meta){meta.textContent="Showing "+visible+" of "+total+" signs";}
     if(empty){empty.style.display=visible===0?"":"none";}
   }
-  search.addEventListener("input",function(){
-    update();
-  });
+  search.addEventListener("input",function(){update();});
   update();
+
+  /* ── Modal ── */
+  var modal=document.getElementById("gesture-modal");
+  var backdrop=document.getElementById("gesture-modal-backdrop");
+  var closeBtn=document.getElementById("gesture-modal-close");
+  var titleEl=document.getElementById("gesture-modal-title");
+  var descEl=document.getElementById("gesture-modal-desc");
+  var diffEl=document.getElementById("gesture-modal-difficulty");
+  var canvas=document.getElementById("gesture-canvas");
+  var fallback=document.getElementById("gesture-canvas-fallback");
+  var ctx=canvas.getContext("2d");
+
+  // Landmark data keyed by lowercase label
+  var gestureDB=null;
+
+  function loadGestureDB(cb){
+    if(gestureDB){cb(gestureDB);return;}
+    fetch("/static/data/gesture_references.json")
+      .then(function(r){return r.json();})
+      .then(function(data){gestureDB=data;cb(data);})
+      .catch(function(){gestureDB={};cb({});});
+  }
+
+  function drawLandmarks(data){
+    var W=canvas.width, H=canvas.height;
+    ctx.clearRect(0,0,W,H);
+
+    // background
+    ctx.fillStyle="#050816";
+    ctx.fillRect(0,0,W,H);
+
+    var lm=data.landmarks;
+    if(!lm||!lm.length){return false;}
+
+    var padding=28;
+    var drawW=W-padding*2;
+    var drawH=H-padding*2;
+
+    // connections
+    var conns=data.connections||[];
+    ctx.strokeStyle="rgba(139,92,246,0.55)";
+    ctx.lineWidth=2;
+    ctx.lineCap="round";
+    conns.forEach(function(pair){
+      var a=lm[pair[0]], b=lm[pair[1]];
+      if(!a||!b)return;
+      ctx.beginPath();
+      ctx.moveTo(padding+a.x*drawW, padding+a.y*drawH);
+      ctx.lineTo(padding+b.x*drawW, padding+b.y*drawH);
+      ctx.stroke();
+    });
+
+    // fingertip landmark indices (4,8,12,16,20) highlighted
+    var tips=[4,8,12,16,20];
+
+    lm.forEach(function(pt,i){
+      var px=padding+pt.x*drawW;
+      var py=padding+pt.y*drawH;
+      var isTip=tips.indexOf(i)!==-1;
+      var r=isTip?7:4.5;
+
+      // glow for tips
+      if(isTip){
+        ctx.beginPath();
+        ctx.arc(px,py,r+4,0,Math.PI*2);
+        ctx.fillStyle="rgba(167,139,250,0.18)";
+        ctx.fill();
+      }
+
+      ctx.beginPath();
+      ctx.arc(px,py,r,0,Math.PI*2);
+      ctx.fillStyle=isTip?"#a78bfa":"#7c3aed";
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(px,py,r,0,Math.PI*2);
+      ctx.strokeStyle="rgba(255,255,255,0.35)";
+      ctx.lineWidth=1;
+      ctx.stroke();
+    });
+
+    return true;
+  }
+
+  function openModal(label){
+    var displayLabel=label.replace(/_/g," ");
+    titleEl.textContent=displayLabel.charAt(0).toUpperCase()+displayLabel.slice(1);
+    descEl.textContent="";
+    diffEl.innerHTML="";
+    fallback.style.display="none";
+    canvas.style.display="";
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle="#050816";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    modal.setAttribute("aria-hidden","false");
+    modal.classList.add("sc-gesture-modal--open");
+    document.body.style.overflow="hidden";
+
+    loadGestureDB(function(db){
+      var key=label.toLowerCase().replace(/ /g,"_");
+      var data=db[key]||db[label.toLowerCase()];
+      if(data){
+        if(data.description){descEl.textContent=data.description;}
+        if(data.difficulty){
+          var colors={easy:"#22c55e",medium:"#f59e0b",hard:"#ef4444"};
+          var c=colors[data.difficulty]||"#94a3b8";
+          diffEl.innerHTML='<span class="sc-gesture-difficulty" style="color:'+c+'">'+
+            data.difficulty.charAt(0).toUpperCase()+data.difficulty.slice(1)+' difficulty</span>';
+        }
+        var drawn=drawLandmarks(data);
+        if(!drawn){canvas.style.display="none";fallback.style.display="";}
+      } else {
+        canvas.style.display="none";
+        fallback.style.display="";
+      }
+    });
+  }
+
+  function closeModal(){
+    modal.classList.remove("sc-gesture-modal--open");
+    modal.setAttribute("aria-hidden","true");
+    document.body.style.overflow="";
+  }
+
+  cards.forEach(function(card){
+    card.addEventListener("click",function(){
+      openModal(card.dataset.label);
+    });
+    card.setAttribute("title","View gesture skeleton");
+    card.setAttribute("tabindex","0");
+    card.addEventListener("keydown",function(e){
+      if(e.key==="Enter"||e.key===" "){e.preventDefault();openModal(card.dataset.label);}
+    });
+  });
+
+  closeBtn.addEventListener("click",closeModal);
+  backdrop.addEventListener("click",closeModal);
+  document.addEventListener("keydown",function(e){
+    if(e.key==="Escape"&&modal.classList.contains("sc-gesture-modal--open")){closeModal();}
+  });
 })();
 </script>
 {% endblock %}
