@@ -69,7 +69,7 @@ class Config:
             )
             sys.exit(1)
 
-        self.CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", "1"))
+        self.CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", "0"))
         self.MODEL_INPUT_DIM = int(os.getenv("MODEL_INPUT_DIM", str(MODEL_INPUT_DIM)))
         if self.MODEL_INPUT_DIM != MODEL_INPUT_DIM:
             _CONFIG_LOGGER.critical(

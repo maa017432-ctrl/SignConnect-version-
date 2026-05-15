@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import sys
 import threading
 import time
 from typing import Any, Optional
@@ -29,17 +28,20 @@ class CameraManager:
     _INDICES = (0, 1, 2)
     _WARMUP_READS = 3
 
-    def __init__(self, camera_index: int = 1) -> None:
+    def __init__(self, camera_index: int = 0) -> None:
         self.camera_index = camera_index
         self._capture: Optional[Any] = None
         self._active_camera_index: Optional[int] = None
         self._lock = threading.Lock()
         self._running = False
+        self._initializing = False
         self._thread: Optional[threading.Thread] = None
         self._latest_frame: Optional[np.ndarray] = None
         self._hw_probe_time: float = 0.0
         self._hw_probe_cache: Optional[bool] = None
         self._hw_probe_ttl_seconds: float = 30.0
+        self._read_failures: int = 0
+        self._last_read_warning_at: float = 0.0
 
     @property
     def _camera_index(self) -> Optional[int]:
@@ -71,22 +73,10 @@ class CameraManager:
         if cv2 is None:
             return None, None
         for index in self._probe_order(preferred_index):
-            # On Windows, DirectShow is often more reliable than the default MSMF backend
-            if sys.platform == "win32":
-                cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
-            else:
-                cap = cv2.VideoCapture(index)
-
+            cap = cv2.VideoCapture(index)
             if not cap.isOpened():
                 cap.release()
-                # If DSHOW fails on Windows, try default backend as fallback
-                if sys.platform == "win32":
-                    cap = cv2.VideoCapture(index)
-                    if not cap.isOpened():
-                        cap.release()
-                        continue
-                else:
-                    continue
+                continue
             try:
                 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
                 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -123,15 +113,24 @@ class CameraManager:
         if cv2 is None:
             raise CameraUnavailableError("OpenCV is not installed")
         with self._lock:
-            if self._running:
+            if self._running or self._initializing:
                 return
-        if not self._try_init():
-            raise CameraUnavailableError("Camera not found or busy")
-        with self._lock:
-            self._running = True
-            self._thread = threading.Thread(target=self._capture_loop, daemon=True)
-            self._thread.start()
-            LOGGER.info("Camera capture started")
+            self._initializing = True
+        try:
+            if not self._try_init():
+                raise CameraUnavailableError("Camera not found or busy")
+            with self._lock:
+                if self._running:
+                    return
+                self._running = True
+                self._read_failures = 0
+                self._last_read_warning_at = 0.0
+                self._thread = threading.Thread(target=self._capture_loop, daemon=True)
+                self._thread.start()
+                LOGGER.info("Camera capture started")
+        finally:
+            with self._lock:
+                self._initializing = False
 
     def _capture_loop(self) -> None:
         """Continuously read frames to keep latest frame available."""
@@ -142,8 +141,30 @@ class CameraManager:
             if ok and frame is not None:
                 with self._lock:
                     self._latest_frame = frame.copy()
+                    self._read_failures = 0
             else:
-                LOGGER.warning("Frame read failed; retrying")
+                now = time.monotonic()
+                with self._lock:
+                    self._read_failures += 1
+                    failures = self._read_failures
+                    should_log = (now - self._last_read_warning_at) >= 5.0
+                    if should_log:
+                        self._last_read_warning_at = now
+                if should_log:
+                    LOGGER.warning("Frame read failed; retrying")
+                if failures >= 20 and self._running:
+                    LOGGER.warning("Camera read failed repeatedly; attempting recovery")
+                    if self._capture is not None:
+                        try:
+                            self._capture.release()
+                        except Exception:
+                            LOGGER.debug("Camera release during recovery failed", exc_info=True)
+                        self._capture = None
+                    if not self._try_init():
+                        time.sleep(0.2)
+                        continue
+                    with self._lock:
+                        self._read_failures = 0
                 time.sleep(0.05)
             time.sleep(0.01)  # ~100fps cap, reduces CPU usage
 
@@ -156,6 +177,8 @@ class CameraManager:
                 self._capture = None
             self._latest_frame = None
             self._active_camera_index = None
+            self._read_failures = 0
+            self._last_read_warning_at = 0.0
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=0.5)
 
@@ -206,11 +229,13 @@ class CameraManager:
         with self._lock:
             return self._running and self._capture is not None
 
-    def is_available(self) -> bool:
-        """True if capture is running, or a quick probe shows hardware is usable."""
+    def is_available(self, probe_hardware: bool = False) -> bool:
+        """True if capture is running, or (optionally) hardware probe succeeds."""
         with self._lock:
             if self._running and self._capture is not None:
                 return True
+        if not probe_hardware:
+            return False
         now = time.time()
         if (
             self._hw_probe_cache is not None
