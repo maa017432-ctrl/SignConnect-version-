@@ -34,6 +34,33 @@
     .admin-grid,.admin-highlights{grid-template-columns:1fr}
     .admin-hero,.admin-panel,.admin-stat{border-radius:22px}
   }
+  html[data-theme="light"] .admin-shell{padding-top:88px}
+  html[data-theme="light"] .admin-hero{
+    border-color:rgba(15,23,42,.10);
+    background:linear-gradient(135deg,rgba(139,92,246,.14),rgba(37,99,235,.08) 55%,rgba(255,255,255,.96));
+    box-shadow:0 28px 60px rgba(15,23,42,.10)
+  }
+  html[data-theme="light"] .admin-kicker{
+    background:rgba(255,255,255,.78);
+    border-color:rgba(15,23,42,.08);
+    color:#6d28d9
+  }
+  html[data-theme="light"] .admin-title{color:#0f172a}
+  html[data-theme="light"] .admin-subtitle{color:#334155}
+  html[data-theme="light"] .admin-stat,
+  html[data-theme="light"] .admin-panel,
+  html[data-theme="light"] .admin-highlight{
+    background:rgba(255,255,255,.94);
+    border-color:rgba(15,23,42,.10);
+    box-shadow:0 18px 42px rgba(15,23,42,.08)
+  }
+  html[data-theme="light"] .admin-stat-label,
+  html[data-theme="light"] .admin-panel p,
+  html[data-theme="light"] .admin-highlight span{color:#475569}
+  html[data-theme="light"] .admin-stat-value,
+  html[data-theme="light"] .admin-panel h2,
+  html[data-theme="light"] .admin-highlight strong,
+  html[data-theme="light"] .admin-stat-note{color:#0f172a}
 </style>
 
 <section class="admin-shell">
@@ -107,88 +134,125 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 <script>
   const chartData = {{ chart_data|tojson }};
-  const gridColor = "rgba(148, 163, 184, 0.16)";
-  const tickColor = "#cbd5e1";
+  const chartRefs = [];
 
-  const baseOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { labels: { color: tickColor, boxWidth: 12, usePointStyle: true } },
-      tooltip: {
-        backgroundColor: "rgba(15, 23, 42, 0.95)",
-        titleColor: "#fff",
-        bodyColor: "#e2e8f0",
-        borderColor: "rgba(148, 163, 184, 0.18)",
-        borderWidth: 1
-      }
-    },
-    scales: {
-      x: { ticks: { color: tickColor }, grid: { color: gridColor } },
-      y: { ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true }
-    }
-  };
+  function getChartTheme() {
+    const isLight = document.documentElement.getAttribute("data-theme") === "light";
+    return isLight ? {
+      gridColor: "rgba(15, 23, 42, 0.10)",
+      tickColor: "#334155",
+      tooltipBg: "rgba(255, 255, 255, 0.98)",
+      tooltipTitle: "#0f172a",
+      tooltipBody: "#334155",
+      tooltipBorder: "rgba(15, 23, 42, 0.10)",
+      doughnutBorder: "rgba(255, 255, 255, 0.95)",
+      lineFill: "rgba(139, 92, 246, 0.14)",
+      barFill: "rgba(59, 130, 246, 0.62)",
+      barStroke: "#3b82f6",
+    } : {
+      gridColor: "rgba(148, 163, 184, 0.16)",
+      tickColor: "#cbd5e1",
+      tooltipBg: "rgba(15, 23, 42, 0.95)",
+      tooltipTitle: "#fff",
+      tooltipBody: "#e2e8f0",
+      tooltipBorder: "rgba(148, 163, 184, 0.18)",
+      doughnutBorder: "rgba(15, 23, 42, 0.9)",
+      lineFill: "rgba(139, 92, 246, 0.22)",
+      barFill: "rgba(59, 130, 246, 0.72)",
+      barStroke: "#60a5fa",
+    };
+  }
 
-  new Chart(document.getElementById("translationsChart"), {
-    type: "line",
-    data: {
-      labels: chartData.translations_over_time.labels,
-      datasets: [{
-        label: "Translations",
-        data: chartData.translations_over_time.values,
-        borderColor: "#8b5cf6",
-        backgroundColor: "rgba(139, 92, 246, 0.22)",
-        fill: true,
-        tension: 0.35,
-        pointRadius: 4,
-        pointHoverRadius: 6
-      }]
-    },
-    options: baseOptions
-  });
-
-  new Chart(document.getElementById("gesturesChart"), {
-    type: "doughnut",
-    data: {
-      labels: chartData.top_gestures.labels,
-      datasets: [{
-        data: chartData.top_gestures.values,
-        backgroundColor: ["#8b5cf6", "#3b82f6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"],
-        borderColor: "rgba(15, 23, 42, 0.9)",
-        borderWidth: 3
-      }]
-    },
-    options: {
+  function buildBaseOptions(theme) {
+    return {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: "bottom", labels: { color: tickColor, boxWidth: 12, usePointStyle: true } },
-        tooltip: baseOptions.plugins.tooltip
-      }
-    }
-  });
-
-  new Chart(document.getElementById("confidenceChart"), {
-    type: "bar",
-    data: {
-      labels: chartData.confidence_by_gesture.labels,
-      datasets: [{
-        label: "Average confidence (%)",
-        data: chartData.confidence_by_gesture.values,
-        backgroundColor: "rgba(59, 130, 246, 0.72)",
-        borderColor: "#60a5fa",
-        borderWidth: 1.5,
-        borderRadius: 10
-      }]
-    },
-    options: {
-      ...baseOptions,
-      indexAxis: "y",
+        legend: { labels: { color: theme.tickColor, boxWidth: 12, usePointStyle: true } },
+        tooltip: {
+          backgroundColor: theme.tooltipBg,
+          titleColor: theme.tooltipTitle,
+          bodyColor: theme.tooltipBody,
+          borderColor: theme.tooltipBorder,
+          borderWidth: 1
+        }
+      },
       scales: {
-        x: { ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true, max: 100 },
-        y: { ticks: { color: tickColor }, grid: { display: false } }
+        x: { ticks: { color: theme.tickColor }, grid: { color: theme.gridColor } },
+        y: { ticks: { color: theme.tickColor }, grid: { color: theme.gridColor }, beginAtZero: true }
       }
-    }
-  });
+    };
+  }
+
+  function renderCharts() {
+    chartRefs.splice(0).forEach((chart) => chart.destroy());
+    const theme = getChartTheme();
+    const baseOptions = buildBaseOptions(theme);
+
+    chartRefs.push(new Chart(document.getElementById("translationsChart"), {
+      type: "line",
+      data: {
+        labels: chartData.translations_over_time.labels,
+        datasets: [{
+          label: "Translations",
+          data: chartData.translations_over_time.values,
+          borderColor: "#8b5cf6",
+          backgroundColor: theme.lineFill,
+          fill: true,
+          tension: 0.35,
+          pointRadius: 4,
+          pointHoverRadius: 6
+        }]
+      },
+      options: baseOptions
+    }));
+
+    chartRefs.push(new Chart(document.getElementById("gesturesChart"), {
+      type: "doughnut",
+      data: {
+        labels: chartData.top_gestures.labels,
+        datasets: [{
+          data: chartData.top_gestures.values,
+          backgroundColor: ["#8b5cf6", "#3b82f6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"],
+          borderColor: theme.doughnutBorder,
+          borderWidth: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "bottom", labels: { color: theme.tickColor, boxWidth: 12, usePointStyle: true } },
+          tooltip: baseOptions.plugins.tooltip
+        }
+      }
+    }));
+
+    chartRefs.push(new Chart(document.getElementById("confidenceChart"), {
+      type: "bar",
+      data: {
+        labels: chartData.confidence_by_gesture.labels,
+        datasets: [{
+          label: "Average confidence (%)",
+          data: chartData.confidence_by_gesture.values,
+          backgroundColor: theme.barFill,
+          borderColor: theme.barStroke,
+          borderWidth: 1.5,
+          borderRadius: 10
+        }]
+      },
+      options: {
+        ...baseOptions,
+        indexAxis: "y",
+        scales: {
+          x: { ticks: { color: theme.tickColor }, grid: { color: theme.gridColor }, beginAtZero: true, max: 100 },
+          y: { ticks: { color: theme.tickColor }, grid: { display: false } }
+        }
+      }
+    }));
+  }
+
+  renderCharts();
+  window.addEventListener("themeChanged", renderCharts);
 </script>
 {% endblock %}

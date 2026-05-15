@@ -50,6 +50,18 @@ def test_main_routes(client) -> None:
     assert client.get("/dictionary").status_code == 200
 
 
+def test_translator_page_renders_svg_action_and_stat_icons(client) -> None:
+    """Translator page should render structured SVG icon buttons/cards for the light-mode UI."""
+    response = client.get("/translator")
+    body = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert 'id="auto-speak-btn"' in body
+    assert 'class="sc-btn__icon-wrap"' in body
+    assert 'class="sc-stat-mini-icon"' in body
+    assert "🔊" not in body
+    assert "📋" not in body
+
+
 def test_dictionary_page_renders_searchable_supported_signs(client) -> None:
     """Dictionary page should show educational searchable glossary UI."""
     response = client.get("/dictionary")
