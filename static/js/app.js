@@ -88,8 +88,8 @@
 
   /* ── Stream state ─────────────────────────────────────────── */
   const FRAME_MS = 80;    // ~12.5 fps camera polling target
-  const STATUS_MS = 4000;
-  const PREDICT_MS = 300;   // HTTP fallback prediction poll interval
+  const STATUS_MS = 3000;
+  const PREDICT_MS = 1000;   // HTTP fallback prediction poll interval
 
   const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor" class="sc-btn-icon" style="width:14px;height:14px"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
   const ICON_PLAY  = '<svg viewBox="0 0 24 24" fill="currentColor" class="sc-btn-icon" style="width:14px;height:14px"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
@@ -121,6 +121,8 @@
   let _autoSpeakInFlight = false;  // prevents overlapping TTS requests
   let _activeAudio = null;
   let cameraNotificationSent = false;
+  let predictionRequestInFlight = false;
+  let statusRequestInFlight = false;
 
   function _applyAutoSpeakButton() {
     if (!autoSpeakBtn) return;
@@ -1064,6 +1066,8 @@
 
   /* ── Poll /api/status (slow — health chips only) ──────────── */
   async function pollStatus() {
+    if (statusRequestInFlight) return;
+    statusRequestInFlight = true;
     try {
       const res = await fetch("/api/status", { cache: "no-store" });
       const data = await res.json();
@@ -1123,6 +1127,8 @@
         notifyUser("camera", "Camera error", "SignConnect could not read from the selected camera.");
         cameraNotificationSent = true;
       }
+    } finally {
+      statusRequestInFlight = false;
     }
   }
 
@@ -1182,11 +1188,14 @@
 
   /* ── HTTP fallback poll for /api/prediction ───────────────── */
   async function pollPrediction() {
+    if (predictionRequestInFlight) return;
+    predictionRequestInFlight = true;
     try {
       const res = await fetch("/api/prediction", { cache: "no-store" });
       const data = await res.json();
       updatePredictionUI(data);
     } catch { /* ignore */ }
+    finally { predictionRequestInFlight = false; }
   }
 
   /* ── Sentence display ─────────────────────────────────────── */
