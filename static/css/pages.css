@@ -104,7 +104,17 @@ html[data-theme="light"] .sc-btn--active:hover{background:rgba(139,92,246,.25)}
 .coaching-message.success{background:rgba(16,185,129,.14);color:#bbf7d0;border-color:rgba(16,185,129,.35)}
 
 /* Sentence Display */
-.sc-sentence-display{min-height:72px;padding:14px 16px;background:rgba(5,8,22,.6);border:1px solid rgba(255,255,255,.05);border-radius:14px;font-size:14px;color:#e2e8f0;line-height:1.65;margin-bottom:12px}
+.sc-sentence-display{
+  min-height:72px;
+  padding:14px 16px;
+  background:rgba(5,8,22,.6);
+  border:1px solid rgba(255,255,255,.05);
+  border-radius:14px;
+  font-size:14px;
+  color:#e2e8f0;
+  line-height:1.65;
+  margin-bottom:12px
+}
 .sc-sentence-actions{display:flex;gap:8px;flex-wrap:wrap}
 .sc-upload-status{margin-top:10px;color:var(--text-secondary);font-size:13px;min-height:20px}
 .sc-upload-progress{width:100%;margin-top:6px;height:8px;display:none}

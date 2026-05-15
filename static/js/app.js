@@ -260,6 +260,17 @@
     error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg>',
     success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12.5 2.5 2.5 4.5-5"></path></svg>',
   };
+  const COACHING_ICON_NODES = {};
+
+  function renderCoachingIcon(iconName) {
+    if (!coachingIcon) return;
+    const key = COACHING_ICON_SVGS[iconName] ? iconName : "info";
+    if (!COACHING_ICON_NODES[key]) {
+      const parsed = new DOMParser().parseFromString(COACHING_ICON_SVGS[key], "image/svg+xml");
+      COACHING_ICON_NODES[key] = parsed.documentElement;
+    }
+    coachingIcon.replaceChildren(COACHING_ICON_NODES[key].cloneNode(true));
+  }
 
   /**
    * Determine the coaching message based on current prediction state
@@ -395,7 +406,7 @@
     if (!coachingContainer || !coachingMessage || !coachingIcon || !coachingText) return;
 
     // Update message content
-    coachingIcon.innerHTML = COACHING_ICON_SVGS[message.icon] || COACHING_ICON_SVGS.info;
+    renderCoachingIcon(message.icon);
     coachingText.textContent = message.text;
 
     // Remove all previous state classes

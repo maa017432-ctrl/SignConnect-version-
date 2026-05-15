@@ -185,7 +185,8 @@
   }
 
   function renderCharts() {
-    chartRefs.splice(0).forEach((chart) => chart.destroy());
+    chartRefs.forEach((chart) => chart.destroy());
+    chartRefs.length = 0;
     const theme = getChartTheme();
     const baseOptions = buildBaseOptions(theme);
 
