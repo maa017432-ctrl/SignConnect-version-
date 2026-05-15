@@ -182,7 +182,7 @@ def status() -> tuple[dict[str, object], int]:
             rule.rule in ("/camera_frame", "/api/camera_frame")
             for rule in current_app.url_map.iter_rules()
         )
-        current_app.extensions["camera_frame_route_available"] = bool(camera_frame_route)
+        current_app.extensions["camera_frame_route_available"] = camera_frame_route
     return (
         jsonify(
             {

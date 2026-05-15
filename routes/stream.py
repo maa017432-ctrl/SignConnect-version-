@@ -79,14 +79,19 @@ def _should_emit_prediction(app: Any, payload: dict[str, object]) -> bool:
     if state is None:
         state = {"last_emit_at": 0.0, "last_key": None}
         app.extensions["prediction_emit_state"] = state
+    confidence_value = payload.get("confidence")
+    try:
+        confidence_bucket = round(float(confidence_value or 0.0), 2)
+    except (TypeError, ValueError):
+        confidence_bucket = 0.0
     key = (
         payload.get("smoothed_label"),
         payload.get("label"),
-        round(float(payload.get("confidence") or 0.0), 2),
+        confidence_bucket,
         (payload.get("coaching") or {}).get("issue"),
         payload.get("sentence"),
     )
-    elapsed = now - float(state.get("last_emit_at") or 0.0)
+    elapsed = now - state.get("last_emit_at", 0.0)
     if key != state.get("last_key") or elapsed >= _PREDICTION_EMIT_MIN_INTERVAL_S:
         state["last_key"] = key
         state["last_emit_at"] = now

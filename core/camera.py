@@ -71,9 +71,12 @@ class CameraManager:
         if cv2 is None:
             return None, None
         for index in self._probe_order(preferred_index):
-            cap: Optional[Any] = None
             try:
                 cap = cv2.VideoCapture(index)
+            except Exception as error:
+                LOGGER.warning("Camera probe failed on index %s: %s", index, error)
+                continue
+            try:
                 if not cap.isOpened():
                     cap.release()
                     continue
@@ -89,8 +92,7 @@ class CameraManager:
                     return cap, index
             except Exception as error:
                 LOGGER.warning("Camera probe failed on index %s: %s", index, error)
-            if cap is not None:
-                cap.release()
+            cap.release()
         return None, None
 
     def _try_init(self) -> bool:
@@ -119,6 +121,8 @@ class CameraManager:
             if self._capture is None and not self._try_init():
                 raise CameraUnavailableError("Camera not found or busy")
             with self._lock:
+                # Re-check after initialization because another thread may have
+                # completed start() while this thread was opening the camera.
                 if self._running and self._capture is not None:
                     return
                 self._running = True

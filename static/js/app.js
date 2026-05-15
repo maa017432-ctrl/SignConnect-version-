@@ -1194,8 +1194,12 @@
       const res = await fetch("/api/prediction", { cache: "no-store" });
       const data = await res.json();
       updatePredictionUI(data);
-    } catch { /* ignore */ }
-    finally { predictionRequestInFlight = false; }
+    } catch {
+      /* ignore */
+    }
+    finally {
+      predictionRequestInFlight = false;
+    }
   }
 
   /* ── Sentence display ─────────────────────────────────────── */
