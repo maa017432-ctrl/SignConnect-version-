@@ -1,259 +1,162 @@
 {% extends "base.html" %}
 {% block title %}Admin Dashboard{% endblock %}
-{% block meta_description %}Administrative analytics dashboard for SignConnect usage, translation activity, and model confidence trends.{% endblock %}
+{% block meta_description %}Administrative analytics dashboard for SignConnect usage, translation activity, and system performance.{% endblock %}
 
 {% block content %}
-<style>
-  .admin-shell{max-width:1200px;margin:0 auto;padding:40px 20px 72px}
-  .admin-hero{position:relative;overflow:hidden;border:1px solid rgba(148,163,184,.16);border-radius:28px;padding:32px;background:linear-gradient(135deg,rgba(139,92,246,.26),rgba(37,99,235,.2) 55%,rgba(15,23,42,.92));box-shadow:0 30px 80px rgba(15,23,42,.28);margin-bottom:28px}
-  .admin-hero::after{content:"";position:absolute;inset:auto -60px -80px auto;width:220px;height:220px;background:radial-gradient(circle,rgba(96,165,250,.32),transparent 68%)}
-  .admin-kicker{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(15,23,42,.5);border:1px solid rgba(148,163,184,.16);color:#c4b5fd;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
-  .admin-title{margin:14px 0 10px;font-size:clamp(2rem,5vw,3.4rem);line-height:1.02;letter-spacing:-.04em}
-  .admin-subtitle{margin:0;max-width:760px;color:rgba(226,232,240,.86);font-size:1rem}
-  .admin-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin:24px 0 30px}
-  .admin-stat{padding:22px;border-radius:24px;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.15);box-shadow:0 18px 45px rgba(15,23,42,.2)}
-  .admin-stat-label{display:block;color:#94a3b8;font-size:.9rem;margin-bottom:10px}
-  .admin-stat-value{display:block;font-size:2rem;font-weight:800;letter-spacing:-.04em}
-  .admin-stat-note{display:block;margin-top:8px;color:#cbd5e1;font-size:.92rem}
-  .admin-panels{display:grid;grid-template-columns:1.35fr 1fr;gap:20px}
-  .admin-panel{padding:22px;border-radius:26px;background:rgba(15,23,42,.78);border:1px solid rgba(148,163,184,.14);box-shadow:0 20px 48px rgba(15,23,42,.22)}
-  .admin-panel h2{margin:0 0 6px;font-size:1.15rem}
-  .admin-panel p{margin:0 0 18px;color:#94a3b8;font-size:.95rem}
-  .admin-panel canvas{width:100%!important;height:320px!important}
-  .admin-panel--wide{grid-column:1 / -1}
-  .admin-highlights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:18px}
-  .admin-highlight{padding:16px 18px;border-radius:20px;background:rgba(30,41,59,.74);border:1px solid rgba(148,163,184,.12)}
-  .admin-highlight strong{display:block;font-size:1rem;margin-bottom:4px}
-  .admin-highlight span{color:#94a3b8;font-size:.9rem}
-  @media (max-width: 1080px){
-    .admin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .admin-panels{grid-template-columns:1fr}
-  }
-  @media (max-width: 640px){
-    .admin-shell{padding:28px 14px 56px}
-    .admin-grid,.admin-highlights{grid-template-columns:1fr}
-    .admin-hero,.admin-panel,.admin-stat{border-radius:22px}
-  }
-  html[data-theme="light"] .admin-shell{padding-top:88px}
-  html[data-theme="light"] .admin-hero{
-    border-color:rgba(15,23,42,.10);
-    background:linear-gradient(135deg,rgba(139,92,246,.14),rgba(37,99,235,.08) 55%,rgba(255,255,255,.96));
-    box-shadow:0 28px 60px rgba(15,23,42,.10)
-  }
-  html[data-theme="light"] .admin-kicker{
-    background:rgba(255,255,255,.78);
-    border-color:rgba(15,23,42,.08);
-    color:#6d28d9
-  }
-  html[data-theme="light"] .admin-title{color:#0f172a}
-  html[data-theme="light"] .admin-subtitle{color:#334155}
-  html[data-theme="light"] .admin-stat,
-  html[data-theme="light"] .admin-panel,
-  html[data-theme="light"] .admin-highlight{
-    background:rgba(255,255,255,.94);
-    border-color:rgba(15,23,42,.10);
-    box-shadow:0 18px 42px rgba(15,23,42,.08)
-  }
-  html[data-theme="light"] .admin-stat-label,
-  html[data-theme="light"] .admin-panel p,
-  html[data-theme="light"] .admin-highlight span{color:#475569}
-  html[data-theme="light"] .admin-stat-value,
-  html[data-theme="light"] .admin-panel h2,
-  html[data-theme="light"] .admin-highlight strong,
-  html[data-theme="light"] .admin-stat-note{color:#0f172a}
-</style>
-
-<section class="admin-shell">
-  <header class="admin-hero">
-    <span class="admin-kicker">System Administrator • Analytics Overview</span>
-    <h1 class="admin-title">Admin Dashboard</h1>
-    <p class="admin-subtitle">
-      A presentation-ready snapshot of SignConnect platform usage, translator activity, and model confidence trends.
-    </p>
-
-    <div class="admin-highlights">
-      <div class="admin-highlight">
-        <strong>{{ stats.translations_today }}</strong>
-        <span>Translations processed today</span>
+<div class="sc-page sc-admin-page">
+  <div class="sc-page-container sc-admin-shell">
+    <section class="sc-admin-hero sc-reveal">
+      <div>
+        <span class="sc-admin-kicker">AI operations • system control</span>
+        <h1 class="sc-page-title sc-admin-title">Admin Dashboard</h1>
+        <p class="sc-page-subtitle sc-admin-subtitle">Monitor users, translation activity, prediction quality, and core SignConnect services from one premium control center.</p>
       </div>
-      <div class="admin-highlight">
-        <strong>{{ stats.active_users }}</strong>
-        <span>Users with recorded translation activity</span>
+      <div class="sc-admin-hero-actions">
+        <span class="sc-badge">Connected users: <strong id="admin-connected-users">{{ dashboard_payload.monitoring.connected_users }}</strong></span>
+        <span class="sc-badge">Avg confidence: <strong id="admin-avg-confidence">{{ "%.1f"|format(dashboard_payload.stats.average_confidence) }}%</strong></span>
       </div>
-      <div class="admin-highlight">
-        <strong>{{ "%.1f"|format(stats.average_confidence) }}%</strong>
-        <span>Average model confidence across all translations</span>
-      </div>
-    </div>
-  </header>
+    </section>
 
-  <section class="admin-grid" aria-label="Summary statistics">
-    <article class="admin-stat">
-      <span class="admin-stat-label">Total Translations</span>
-      <span class="admin-stat-value">{{ stats.total_translations }}</span>
-      <span class="admin-stat-note">All translation history rows stored in SQLite.</span>
-    </article>
-    <article class="admin-stat">
-      <span class="admin-stat-label">Registered Users</span>
-      <span class="admin-stat-value">{{ stats.total_users }}</span>
-      <span class="admin-stat-note">Accounts available to access SignConnect.</span>
-    </article>
-    <article class="admin-stat">
-      <span class="admin-stat-label">Active Users</span>
-      <span class="admin-stat-value">{{ stats.active_users }}</span>
-      <span class="admin-stat-note">Distinct signed-in users with saved translation activity.</span>
-    </article>
-    <article class="admin-stat">
-      <span class="admin-stat-label">Average Confidence</span>
-      <span class="admin-stat-value">{{ "%.1f"|format(stats.average_confidence) }}%</span>
-      <span class="admin-stat-note">A proxy for gesture recognition reliability.</span>
-    </article>
-  </section>
+    <section class="sc-admin-stat-grid" aria-label="Admin summary statistics">
+      <article class="sc-admin-stat-card"><span>Total Translations</span><strong id="stat-total-translations">{{ dashboard_payload.stats.total_translations }}</strong><small>Stored translation rows</small></article>
+      <article class="sc-admin-stat-card"><span>Registered Users</span><strong id="stat-total-users">{{ dashboard_payload.stats.total_users }}</strong><small>User accounts in SQLite</small></article>
+      <article class="sc-admin-stat-card"><span>Active Sessions</span><strong id="stat-active-sessions">{{ dashboard_payload.stats.active_sessions }}</strong><small>Live browser connections</small></article>
+      <article class="sc-admin-stat-card"><span>Avg Confidence</span><strong id="stat-average-confidence">{{ "%.1f"|format(dashboard_payload.stats.average_confidence) }}%</strong><small>Mean model certainty</small></article>
+      <article class="sc-admin-stat-card"><span>Predictions Served</span><strong id="stat-predictions-served">{{ dashboard_payload.stats.predictions_served }}</strong><small>Real-time inference events</small></article>
+      <article class="sc-admin-stat-card"><span>Avg Model Latency</span><strong id="stat-avg-latency">{{ "%.1f"|format(dashboard_payload.stats.avg_inference_ms) }} ms</strong><small>Recent inference timing</small></article>
+    </section>
 
-  <section class="admin-panels">
-    <article class="admin-panel">
-      <h2>Translations Over Time</h2>
-      <p>Daily translation volume over the past 7 days.</p>
-      <canvas id="translationsChart" aria-label="Translations over time chart"></canvas>
-    </article>
+    <section class="sc-admin-grid">
+      <article class="sc-widget sc-admin-panel sc-admin-panel--wide">
+        <div class="sc-widget-header"><h3>Translation Analytics</h3></div>
+        <div class="sc-widget-body sc-admin-chart-grid">
+          <div class="sc-admin-chart-card">
+            <h4>Daily Usage</h4>
+            <canvas id="translationsChart" aria-label="Translations over time chart"></canvas>
+          </div>
+          <div class="sc-admin-chart-card">
+            <h4>Most Common Gestures</h4>
+            <canvas id="gesturesChart" aria-label="Most common gestures chart"></canvas>
+          </div>
+          <div class="sc-admin-chart-card sc-admin-chart-card--wide">
+            <h4>Average Confidence by Gesture</h4>
+            <canvas id="confidenceChart" aria-label="Gesture confidence chart"></canvas>
+          </div>
+        </div>
+      </article>
 
-    <article class="admin-panel">
-      <h2>Most Common Gestures</h2>
-      <p>Top gesture labels based on stored translation frequency.</p>
-      <canvas id="gesturesChart" aria-label="Most common gestures chart"></canvas>
-    </article>
+      <article class="sc-widget sc-admin-panel">
+        <div class="sc-widget-header"><h3>Real-Time Monitoring</h3></div>
+        <div class="sc-widget-body sc-admin-monitor-grid">
+          <div class="sc-admin-monitor-card"><span>Connected Users</span><strong id="monitor-connected-users">{{ dashboard_payload.monitoring.connected_users }}</strong></div>
+          <div class="sc-admin-monitor-card"><span>Active Sessions</span><strong id="monitor-active-sessions">{{ dashboard_payload.monitoring.active_sessions }}</strong></div>
+          <div class="sc-admin-monitor-card"><span>Last Gesture</span><strong id="monitor-last-label">{{ dashboard_payload.monitoring.last_prediction_label }}</strong></div>
+          <div class="sc-admin-monitor-card"><span>Last Confidence</span><strong id="monitor-last-confidence">{{ "%.1f"|format(dashboard_payload.monitoring.last_prediction_confidence) }}%</strong></div>
+          <div class="sc-admin-monitor-card"><span>Model Mode</span><strong id="monitor-model-mode">{{ 'Demo' if dashboard_payload.monitoring.demo_mode else 'Live' }}</strong></div>
+          <div class="sc-admin-monitor-card"><span>Last Update</span><strong id="monitor-last-update">{{ dashboard_payload.monitoring.last_prediction_at or 'Waiting' }}</strong></div>
+        </div>
+      </article>
 
-    <article class="admin-panel admin-panel--wide">
-      <h2>Gesture Confidence</h2>
-      <p>Average model confidence by gesture label for the strongest-performing classes.</p>
-      <canvas id="confidenceChart" aria-label="Gesture confidence chart"></canvas>
-    </article>
-  </section>
-</section>
+      <article class="sc-widget sc-admin-panel">
+        <div class="sc-widget-header"><h3>System Management</h3></div>
+        <div class="sc-widget-body sc-admin-actions">
+          <div class="sc-admin-settings-grid">
+            <label class="sc-admin-field">
+              <span>Confidence Threshold</span>
+              <input id="admin-threshold-input" type="range" min="10" max="99" value="{{ dashboard_payload.settings.confidence_threshold|int }}">
+              <strong id="admin-threshold-value">{{ dashboard_payload.settings.confidence_threshold|int }}%</strong>
+            </label>
+            <label class="sc-admin-field">
+              <span>Preferred Camera Index</span>
+              <input id="admin-camera-input" type="number" min="0" max="10" value="{{ dashboard_payload.settings.camera_index }}" class="sc-form-input">
+            </label>
+          </div>
+          <div class="sc-admin-action-row">
+            <button type="button" class="sc-btn sc-btn--primary" data-admin-action="save-settings">Save Settings</button>
+            <button type="button" class="sc-btn" data-admin-action="reload-model">Reload AI Model</button>
+            <button type="button" class="sc-btn" data-admin-action="clear-history">Clear Translation History</button>
+            <button type="button" class="sc-btn" data-admin-action="clear-logs">Clear Logs</button>
+          </div>
+          <p id="admin-system-feedback" class="sc-page-subtitle">Use system controls to tune runtime behavior without reloading the page.</p>
+        </div>
+      </article>
 
+      <article class="sc-widget sc-admin-panel sc-admin-panel--wide">
+        <div class="sc-widget-header sc-admin-table-header">
+          <h3>User Management</h3>
+          <div class="sc-search-wrap sc-admin-search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="admin-user-search" type="search" class="sc-search-input" placeholder="Search users by name or email">
+          </div>
+        </div>
+        <div class="sc-widget-body sc-widget-body--table">
+          <div class="sc-admin-table-wrap">
+            <table class="sc-table sc-admin-table">
+              <thead>
+                <tr><th>User</th><th>Status</th><th>Translations</th><th>Average Confidence</th><th>Last Activity</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="admin-users-tbody">
+                {% for user in dashboard_payload.users %}
+                <tr>
+                  <td><strong>{{ user.full_name }}</strong><br><span class="sc-muted">{{ user.email }}</span></td>
+                  <td><span class="sc-admin-status sc-admin-status--{{ user.activity_status|lower|replace(' ', '-') }}">{{ user.activity_status }}</span></td>
+                  <td>{{ user.translations }}</td>
+                  <td>{{ "%.1f"|format(user.avg_confidence) }}%</td>
+                  <td>{{ user.last_active or 'No activity yet' }}</td>
+                  <td>
+                    <div class="sc-admin-inline-actions">
+                      <button type="button" class="sc-btn sc-btn--sm" data-user-action="toggle-suspend" data-user-id="{{ user.id }}" data-user-suspended="{{ 'true' if user.is_suspended else 'false' }}">{{ 'Reactivate' if user.is_suspended else 'Suspend' }}</button>
+                      <button type="button" class="sc-btn sc-btn--sm sc-btn--danger" data-user-action="delete" data-user-id="{{ user.id }}">Delete</button>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+
+      <article class="sc-widget sc-admin-panel sc-admin-panel--wide">
+        <div class="sc-widget-header sc-admin-table-header">
+          <h3>Database Management</h3>
+          <div class="sc-admin-filter-row">
+            <div class="sc-search-wrap sc-admin-search-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input id="admin-translation-search" type="search" class="sc-search-input" placeholder="Search records, gestures, or users">
+            </div>
+            <button type="button" id="admin-export-btn" class="sc-btn sc-btn--sm">Export CSV</button>
+          </div>
+        </div>
+        <div class="sc-widget-body sc-widget-body--table">
+          <div class="sc-admin-table-wrap">
+            <table class="sc-table sc-admin-table">
+              <thead>
+                <tr><th>Gesture</th><th>Confidence</th><th>User</th><th>Timestamp</th><th>Audio</th></tr>
+              </thead>
+              <tbody id="admin-translations-tbody">
+                {% for row in dashboard_payload.translations %}
+                <tr>
+                  <td><span class="sc-gesture-tag">{{ row.gesture_label }}</span></td>
+                  <td>{{ "%.2f"|format(row.confidence_pct) }}%</td>
+                  <td><strong>{{ row.user_name }}</strong><br><span class="sc-muted">{{ row.user_email }}</span></td>
+                  <td>{{ row.created_at }}</td>
+                  <td>{% if row.audio_path %}<audio src="{{ row.audio_path }}" controls preload="none" class="sc-audio"></audio>{% else %}—{% endif %}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+    </section>
+  </div>
+</div>
+
+<script id="admin-dashboard-data" type="application/json">{{ dashboard_payload|tojson }}</script>
+{% endblock %}
+
+{% block extra_scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" crossorigin="anonymous"></script>
-<script>
-  const chartData = {{ chart_data|tojson }};
-  const chartRefs = [];
-
-  function getChartTheme() {
-    const isLight = document.documentElement.getAttribute("data-theme") === "light";
-    return isLight ? {
-      gridColor: "rgba(15, 23, 42, 0.10)",
-      tickColor: "#334155",
-      tooltipBg: "rgba(255, 255, 255, 0.98)",
-      tooltipTitle: "#0f172a",
-      tooltipBody: "#334155",
-      tooltipBorder: "rgba(15, 23, 42, 0.10)",
-      doughnutBorder: "rgba(255, 255, 255, 0.95)",
-      lineFill: "rgba(139, 92, 246, 0.14)",
-      barFill: "rgba(59, 130, 246, 0.62)",
-      barStroke: "#3b82f6",
-    } : {
-      gridColor: "rgba(148, 163, 184, 0.16)",
-      tickColor: "#cbd5e1",
-      tooltipBg: "rgba(15, 23, 42, 0.95)",
-      tooltipTitle: "#fff",
-      tooltipBody: "#e2e8f0",
-      tooltipBorder: "rgba(148, 163, 184, 0.18)",
-      doughnutBorder: "rgba(15, 23, 42, 0.9)",
-      lineFill: "rgba(139, 92, 246, 0.22)",
-      barFill: "rgba(59, 130, 246, 0.72)",
-      barStroke: "#60a5fa",
-    };
-  }
-
-  function buildBaseOptions(theme) {
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: theme.tickColor, boxWidth: 12, usePointStyle: true } },
-        tooltip: {
-          backgroundColor: theme.tooltipBg,
-          titleColor: theme.tooltipTitle,
-          bodyColor: theme.tooltipBody,
-          borderColor: theme.tooltipBorder,
-          borderWidth: 1
-        }
-      },
-      scales: {
-        x: { ticks: { color: theme.tickColor }, grid: { color: theme.gridColor } },
-        y: { ticks: { color: theme.tickColor }, grid: { color: theme.gridColor }, beginAtZero: true }
-      }
-    };
-  }
-
-  function renderCharts() {
-    chartRefs.forEach((chart) => chart.destroy());
-    chartRefs.length = 0;
-    const theme = getChartTheme();
-    const baseOptions = buildBaseOptions(theme);
-
-    chartRefs.push(new Chart(document.getElementById("translationsChart"), {
-      type: "line",
-      data: {
-        labels: chartData.translations_over_time.labels,
-        datasets: [{
-          label: "Translations",
-          data: chartData.translations_over_time.values,
-          borderColor: "#8b5cf6",
-          backgroundColor: theme.lineFill,
-          fill: true,
-          tension: 0.35,
-          pointRadius: 4,
-          pointHoverRadius: 6
-        }]
-      },
-      options: baseOptions
-    }));
-
-    chartRefs.push(new Chart(document.getElementById("gesturesChart"), {
-      type: "doughnut",
-      data: {
-        labels: chartData.top_gestures.labels,
-        datasets: [{
-          data: chartData.top_gestures.values,
-          backgroundColor: ["#8b5cf6", "#3b82f6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"],
-          borderColor: theme.doughnutBorder,
-          borderWidth: 3
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: "bottom", labels: { color: theme.tickColor, boxWidth: 12, usePointStyle: true } },
-          tooltip: baseOptions.plugins.tooltip
-        }
-      }
-    }));
-
-    chartRefs.push(new Chart(document.getElementById("confidenceChart"), {
-      type: "bar",
-      data: {
-        labels: chartData.confidence_by_gesture.labels,
-        datasets: [{
-          label: "Average confidence (%)",
-          data: chartData.confidence_by_gesture.values,
-          backgroundColor: theme.barFill,
-          borderColor: theme.barStroke,
-          borderWidth: 1.5,
-          borderRadius: 10
-        }]
-      },
-      options: {
-        ...baseOptions,
-        indexAxis: "y",
-        scales: {
-          x: { ticks: { color: theme.tickColor }, grid: { color: theme.gridColor }, beginAtZero: true, max: 100 },
-          y: { ticks: { color: theme.tickColor }, grid: { display: false } }
-        }
-      }
-    }));
-  }
-
-  renderCharts();
-  window.addEventListener("themeChanged", renderCharts);
-</script>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 {% endblock %}

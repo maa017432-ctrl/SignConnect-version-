@@ -70,6 +70,8 @@ def test_dictionary_page_renders_searchable_supported_signs(client) -> None:
     assert "Supported Signs Dictionary" in body
     assert 'id="dict-search"' in body
     assert "Showing " in body
+    assert 'static/js/dictionary.js' in body
+    assert "Landmark preview not available yet" in body
 
 
 def test_dictionary_uses_config_fallback_when_label_map_is_empty(client) -> None:
@@ -462,3 +464,89 @@ def test_clear_history_delete_accepts_csrf_without_api_key(client_no_testing_sec
         data={"csrf_token": token},
     )
     assert response.status_code == 200
+
+
+def test_admin_dashboard_exposes_seed_data_and_management_sections(client) -> None:
+    """The rebuilt admin dashboard should render management areas and seeded data."""
+    from database.db import get_connection
+
+    db_path = client.application.config["DATABASE_PATH"]
+    email = "admin-seed@example.com"
+    with get_connection(db_path) as connection:
+        connection.execute("DELETE FROM translations WHERE user_id IN (SELECT id FROM users WHERE email = ?)", (email,))
+        connection.execute("DELETE FROM users WHERE email = ?", (email,))
+        user_id = connection.execute(
+            "INSERT INTO users (email, password_hash, full_name) VALUES (?, ?, ?)",
+            (email, "hash", "Seed Admin"),
+        ).lastrowid
+        session_id = connection.execute("INSERT INTO sessions (ended_at) VALUES (NULL)").lastrowid
+        connection.execute(
+            "INSERT INTO translations (session_id, user_id, gesture_label, confidence, audio_file) VALUES (?, ?, ?, ?, ?)",
+            (session_id, user_id, "Hello", 0.93, "hello.mp3"),
+        )
+
+    with client.session_transaction() as flask_session:
+        flask_session["user_id"] = user_id
+        flask_session["user_name"] = "Seed Admin"
+        flask_session["user_email"] = email
+
+    response = client.get("/admin")
+    body = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert "User Management" in body
+    assert "Database Management" in body
+    assert 'id="admin-dashboard-data"' in body
+    assert "Hello" in body
+
+
+def test_admin_api_endpoints_support_dashboard_user_and_export_flows(client) -> None:
+    """Admin APIs should expose dashboard JSON, user management, and CSV export."""
+    from database.db import get_connection
+
+    db_path = client.application.config["DATABASE_PATH"]
+    admin_email = "admin-api@example.com"
+    target_email = "target-user@example.com"
+    with get_connection(db_path) as connection:
+        connection.execute("DELETE FROM translations WHERE user_id IN (SELECT id FROM users WHERE email IN (?, ?))", (admin_email, target_email))
+        connection.execute("DELETE FROM users WHERE email IN (?, ?)", (admin_email, target_email))
+        admin_id = connection.execute(
+            "INSERT INTO users (email, password_hash, full_name) VALUES (?, ?, ?)",
+            (admin_email, "hash", "Admin Api"),
+        ).lastrowid
+        target_id = connection.execute(
+            "INSERT INTO users (email, password_hash, full_name) VALUES (?, ?, ?)",
+            (target_email, "hash", "Target User"),
+        ).lastrowid
+        session_id = connection.execute("INSERT INTO sessions (ended_at) VALUES (NULL)").lastrowid
+        connection.execute(
+            "INSERT INTO translations (session_id, user_id, gesture_label, confidence, audio_file) VALUES (?, ?, ?, ?, ?)",
+            (session_id, target_id, "Thanks", 0.84, "thanks.mp3"),
+        )
+
+    with client.session_transaction() as flask_session:
+        flask_session["user_id"] = admin_id
+        flask_session["user_name"] = "Admin Api"
+        flask_session["user_email"] = admin_email
+
+    dashboard = client.get("/api/admin/dashboard")
+    assert dashboard.status_code == 200
+    dashboard_payload = dashboard.get_json()
+    assert dashboard_payload is not None
+    assert "stats" in dashboard_payload
+    assert "charts" in dashboard_payload
+
+    users = client.get("/api/admin/users?query=target")
+    assert users.status_code == 200
+    users_payload = users.get_json()
+    assert users_payload is not None
+    assert users_payload["count"] >= 1
+
+    suspend = client.post(f"/api/admin/users/{target_id}/suspend", data={"suspended": "true"})
+    assert suspend.status_code == 200
+    assert suspend.get_json()["is_suspended"] is True
+
+    export_response = client.get("/api/admin/translations/export?query=Thanks")
+    export_body = export_response.get_data(as_text=True)
+    assert export_response.status_code == 200
+    assert export_response.headers["Content-Disposition"] == "attachment; filename=signconnect_admin_translations.csv"
+    assert "Thanks" in export_body

@@ -42,4 +42,16 @@ def init_db(database_path: str, schema_path: str) -> None:
             )
         except sqlite3.OperationalError:
             pass  # Column already present — nothing to do
+        try:
+            connection.execute(
+                "ALTER TABLE users ADD COLUMN is_suspended INTEGER NOT NULL DEFAULT 0"
+            )
+        except sqlite3.OperationalError:
+            pass  # Column already present — nothing to do
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_translations_user_created ON translations(user_id, created_at DESC)"
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_translations_gesture ON translations(gesture_label)"
+        )
     LOGGER.info("Database initialized at %s", db_path)

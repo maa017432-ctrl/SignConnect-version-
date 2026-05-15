@@ -72,7 +72,15 @@
             </div>
             <div class="sc-control-divider"></div>
             <div class="sc-control-stat">
-              <p class="sc-control-label">CONFIDENCE</p>
+              <div class="sc-control-label sc-control-label--with-tooltip">
+                <span>CONFIDENCE</span>
+                <span class="sc-tooltip-anchor">
+                  <button type="button" class="sc-tooltip-trigger" aria-label="Explain confidence score">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 10v5"></path><path d="M12 7h.01"></path></svg>
+                  </button>
+                  <span class="sc-tooltip-panel" role="tooltip">Confidence represents how certain the AI model is about the detected gesture prediction after temporal smoothing and landmark analysis. High confidence usually means the hand pose is stable and clearly matches a learned gesture, while lower confidence can appear when movement is fast, the hand is partially out of frame, or the gesture is still stabilizing.</span>
+                </span>
+              </div>
               <div class="sc-confidence-inline">
                 <div class="sc-conf-bar"><div class="sc-conf-fill" id="confidence-bar-fill" style="transition:width 0.3s ease"></div></div>
                 <span class="sc-conf-pct" id="confidence-value">0%</span>

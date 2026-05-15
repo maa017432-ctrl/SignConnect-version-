@@ -7,6 +7,7 @@ import os
 import threading
 import time
 from collections import deque
+from datetime import datetime, timezone
 from io import BytesIO
 from typing import Any, Iterator
 
@@ -224,6 +225,25 @@ def _annotate_and_encode_jpeg(app: Any, frame: np.ndarray) -> bytes | None:
                 "model_type": getattr(classifier, "model_type", "unknown"),
                 "inference_ms": float(inference_ms) if inference_ms is not None else None,
             }
+
+        runtime_metrics = app.extensions.get("runtime_metrics")
+        runtime_metrics_lock = app.extensions.get("runtime_metrics_lock")
+        if runtime_metrics is not None:
+            if runtime_metrics_lock is None:
+                runtime_metrics_lock = threading.Lock()
+                app.extensions["runtime_metrics_lock"] = runtime_metrics_lock
+            with runtime_metrics_lock:
+                runtime_metrics["prediction_events"] = int(runtime_metrics.get("prediction_events") or 0) + 1
+                runtime_metrics["last_prediction_at"] = datetime.now(timezone.utc).isoformat()
+                runtime_metrics["last_prediction_label"] = smoothed_label or raw_label
+                runtime_metrics["last_prediction_confidence"] = float(raw_confidence)
+                runtime_metrics["model_status"] = getattr(classifier, "model_type", "unknown")
+                runtime_metrics["demo_mode"] = bool(classifier.is_demo_mode)
+                runtime_metrics["camera_index"] = int(getattr(app.extensions.get("camera_manager"), "camera_index", 0) or 0)
+                runtime_metrics["confidence_threshold"] = float(getattr(classifier, "confidence_threshold", 0.75) or 0.75)
+                if inference_ms is not None:
+                    samples = runtime_metrics.setdefault("inference_samples", deque(maxlen=120))
+                    samples.append(float(inference_ms))
 
         _emit_prediction(app, prediction_payload)
 
