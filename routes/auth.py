@@ -80,7 +80,7 @@ def _get_user_by_email(db_path: str, email: str) -> dict | None:
     """Return a user row dict or None."""
     with get_connection(db_path) as conn:
         row = conn.execute(
-            "SELECT id, email, password_hash, full_name FROM users WHERE email = ?",
+            "SELECT id, email, password_hash, full_name, is_suspended FROM users WHERE email = ?",
             (email.lower().strip(),),
         ).fetchone()
     return dict(row) if row else None
@@ -124,6 +124,8 @@ def signin_post():
 
     if not user or not check_password_hash(user["password_hash"], password):
         return render_template("signin.html", error="Invalid email or password.")
+    if bool(user.get("is_suspended")):
+        return render_template("signin.html", error="This account is suspended. Please contact the administrator.")
 
     session.clear()
     session["user_id"] = user["id"]

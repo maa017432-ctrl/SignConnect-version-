@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}">
+  {% block extra_head %}{% endblock %}
 </head>
 
 <body data-theme="dark">
@@ -147,6 +148,7 @@
   <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   <script src="{{ url_for('static', filename='js/home-animations.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
   <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js", { scope: "/" })

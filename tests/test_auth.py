@@ -218,6 +218,31 @@ def test_signin_sets_session_on_success(client) -> None:
         assert sess.get("user_email") == email
 
 
+
+
+def test_signin_rejects_suspended_account(client) -> None:
+    """Suspended accounts should not be able to sign in."""
+    from database.db import get_connection
+    from werkzeug.security import generate_password_hash
+
+    email = "suspended-user@example.com"
+    password = "ValidPass1"
+    db_path = client.application.config["DATABASE_PATH"]
+    with get_connection(db_path) as conn:
+        conn.execute("DELETE FROM users WHERE email = ?", (email,))
+        conn.execute(
+            "INSERT INTO users (email, password_hash, full_name, is_suspended) VALUES (?, ?, ?, 1)",
+            (email, generate_password_hash(password), "Suspended User"),
+        )
+
+    response = client.post(
+        "/signin",
+        data={"email": email, "password": password},
+        follow_redirects=False,
+    )
+    assert response.status_code == 200
+    assert b"account is suspended" in response.data
+
 def test_signout_clears_session(client) -> None:
     """Signing out should clear the session."""
     email = "signout-test@example.com"

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import tempfile
 import time
 import csv
@@ -20,6 +21,7 @@ from core.camera import CameraUnavailableError
 from core.csrf import validate_csrf_token
 from core.logging_config import get_uptime_seconds
 from core.prediction_smoother import PredictionSmoother, SentenceBuilder
+from database.admin_queries import build_dashboard_payload, fetch_translations, fetch_users
 from database.db import get_connection
 from routes.stream import _prediction_lock, camera_frame_response
 
@@ -93,6 +95,44 @@ def _authorize_admin_or_csrf() -> tuple[dict[str, object], int] | None:
     if not _api_key_ok():
         validate_csrf_token()
     return None
+
+
+def _require_admin_session_or_api_key() -> tuple[dict[str, object], int] | None:
+    """Allow signed-in admin UI access or API-key based automation."""
+    if session.get("user_id"):
+        return None
+    if _api_key_ok():
+        return None
+    return jsonify({"error": "Unauthorized", "code": 401}), 401
+
+
+def _sync_runtime_metrics() -> dict[str, object]:
+    """Refresh runtime metrics with the latest model and camera state."""
+    runtime_metrics = current_app.extensions.get("runtime_metrics") or {}
+    classifier = current_app.extensions.get("classifier")
+    camera_manager = current_app.extensions.get("camera_manager")
+    runtime_metrics["model_status"] = getattr(classifier, "model_type", "unknown")
+    runtime_metrics["demo_mode"] = bool(getattr(classifier, "is_demo_mode", True))
+    runtime_metrics["camera_index"] = int(getattr(camera_manager, "camera_index", 0) or 0)
+    runtime_metrics["confidence_threshold"] = float(getattr(classifier, "confidence_threshold", 0.75) or 0.75)
+    current_app.extensions["runtime_metrics"] = runtime_metrics
+    return runtime_metrics
+
+
+def _apply_runtime_config(payload: dict[str, object] | Any) -> tuple[Response, int]:
+    """Apply runtime configuration updates and return the new configuration."""
+    classifier = current_app.extensions["classifier"]
+
+    if "confidence_threshold" in payload:
+        try:
+            threshold = float(payload["confidence_threshold"])
+        except (TypeError, ValueError):
+            return jsonify({"error": "confidence_threshold must be a number", "code": 400}), 400
+        classifier.confidence_threshold = max(0.1, min(1.0, threshold))
+        LOGGER.info("Confidence threshold updated to %.2f", classifier.confidence_threshold)
+
+    _sync_runtime_metrics()
+    return jsonify({"confidence_threshold": classifier.confidence_threshold}), 200
 
 
 @api_bp.get("/api/status")
@@ -742,6 +782,7 @@ def export_history_csv() -> Response | tuple[Response, int]:
 def get_config() -> tuple[dict[str, float], int]:
     """Return current runtime tunable configuration."""
     classifier = current_app.extensions["classifier"]
+    _sync_runtime_metrics()
     return jsonify({"confidence_threshold": classifier.confidence_threshold}), 200
 
 
@@ -785,6 +826,7 @@ def set_camera() -> tuple[dict[str, object], int]:
         LOGGER.exception("Failed to switch camera to index %s", camera_index)
         return jsonify({"error": "Failed to switch camera", "code": 500}), 500
 
+    _sync_runtime_metrics()
     return (
         jsonify(
             {
@@ -803,18 +845,8 @@ def update_config() -> tuple[dict[str, float | str], int]:
     """Update runtime configuration values without restarting the server."""
     if not _api_key_ok():
         return jsonify({"error": "Unauthorized", "code": 401}), 401
-    payload = request.get_json(silent=True) or {}
-    classifier = current_app.extensions["classifier"]
-
-    if "confidence_threshold" in payload:
-        try:
-            threshold = float(payload["confidence_threshold"])
-        except (TypeError, ValueError):
-            return jsonify({"error": "confidence_threshold must be a number", "code": 400}), 400
-        classifier.confidence_threshold = max(0.1, min(1.0, threshold))
-        LOGGER.info("Confidence threshold updated to %.2f", classifier.confidence_threshold)
-
-    return jsonify({"confidence_threshold": classifier.confidence_threshold}), 200
+    payload = request.get_json(silent=True) or request.form or {}
+    return _apply_runtime_config(payload)
 
 
 @api_bp.delete("/api/history")
@@ -852,6 +884,7 @@ def reload_model() -> tuple[dict[str, object], int]:
         classifier.reset_sequence()
 
     labels = translator.get_all_labels()
+    _sync_runtime_metrics()
     return jsonify({
         "status": "ok" if success else "failed",
         "model_available": classifier.is_available,
@@ -890,3 +923,176 @@ def get_translations(lang: str) -> tuple[dict[str, object], int]:
     except OSError as error:
         LOGGER.error("Failed to load translations: %s", error)
         return jsonify({"error": "Failed to load translations", "code": 500}), 500
+
+
+@api_bp.get("/api/admin/dashboard")
+def admin_dashboard_data() -> tuple[Response, int]:
+    """Return the admin dashboard payload for the signed-in admin UI."""
+    auth_error = _require_admin_session_or_api_key()
+    if auth_error is not None:
+        return auth_error
+    payload = build_dashboard_payload(
+        current_app.config["DATABASE_PATH"],
+        _sync_runtime_metrics(),
+    )
+    return jsonify(payload), 200
+
+
+@api_bp.get("/api/admin/users")
+def admin_users() -> tuple[Response, int]:
+    """Return user-management rows with search and activity metadata."""
+    auth_error = _require_admin_session_or_api_key()
+    if auth_error is not None:
+        return auth_error
+    query = str(request.args.get("query", "") or "")
+    limit = int(request.args.get("limit", 50) or 50)
+    rows = fetch_users(current_app.config["DATABASE_PATH"], query=query, limit=limit)
+    return jsonify({"users": rows, "count": len(rows)}), 200
+
+
+@api_bp.post("/api/admin/users/<int:user_id>/suspend")
+def admin_toggle_user_suspension(user_id: int) -> tuple[Response, int]:
+    """Suspend or reactivate a user account."""
+    auth_error = _authorize_admin_or_csrf()
+    if auth_error is not None:
+        return auth_error
+    payload = request.get_json(silent=True) or request.form or {}
+    suspended_raw = str(payload.get("suspended", "true")).strip().lower()
+    suspended = suspended_raw in {"1", "true", "yes", "on"}
+    with get_connection(current_app.config["DATABASE_PATH"]) as connection:
+        row = connection.execute(
+            "SELECT id, email FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+        if row is None:
+            return jsonify({"error": "User not found", "code": 404}), 404
+        connection.execute(
+            "UPDATE users SET is_suspended = ? WHERE id = ?",
+            (1 if suspended else 0, user_id),
+        )
+    return jsonify({"status": "ok", "user_id": user_id, "is_suspended": suspended}), 200
+
+
+@api_bp.delete("/api/admin/users/<int:user_id>")
+def admin_delete_user(user_id: int) -> tuple[Response, int]:
+    """Delete a user account and its translation history."""
+    auth_error = _authorize_admin_or_csrf()
+    if auth_error is not None:
+        return auth_error
+    if session.get("user_id") == user_id:
+        return jsonify({"error": "You cannot delete the current signed-in account.", "code": 400}), 400
+    with get_connection(current_app.config["DATABASE_PATH"]) as connection:
+        row = connection.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+        if row is None:
+            return jsonify({"error": "User not found", "code": 404}), 404
+        deleted_translations = connection.execute(
+            "DELETE FROM translations WHERE user_id = ?",
+            (user_id,),
+        ).rowcount
+        connection.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    return jsonify({"status": "deleted", "user_id": user_id, "deleted_translations": int(deleted_translations or 0)}), 200
+
+
+@api_bp.get("/api/admin/translations")
+def admin_translation_records() -> tuple[Response, int]:
+    """Return translation history with filtering for the admin table."""
+    auth_error = _require_admin_session_or_api_key()
+    if auth_error is not None:
+        return auth_error
+    query = str(request.args.get("query", "") or "")
+    gesture = str(request.args.get("gesture", "") or "")
+    user_id_raw = request.args.get("user_id")
+    limit = int(request.args.get("limit", 100) or 100)
+    try:
+        user_id = int(user_id_raw) if user_id_raw not in (None, "", "null") else None
+    except (TypeError, ValueError):
+        return jsonify({"error": "user_id must be an integer", "code": 400}), 400
+    rows = fetch_translations(
+        current_app.config["DATABASE_PATH"],
+        query=query,
+        gesture=gesture,
+        user_id=user_id,
+        limit=limit,
+    )
+    return jsonify({"translations": rows, "count": len(rows)}), 200
+
+
+@api_bp.get("/api/admin/translations/export")
+def admin_export_translations_csv() -> Response | tuple[Response, int]:
+    """Export filtered translation history for the admin dashboard."""
+    auth_error = _require_admin_session_or_api_key()
+    if auth_error is not None:
+        return auth_error
+    query = str(request.args.get("query", "") or "")
+    gesture = str(request.args.get("gesture", "") or "")
+    user_id_raw = request.args.get("user_id")
+    try:
+        user_id = int(user_id_raw) if user_id_raw not in (None, "", "null") else None
+    except (TypeError, ValueError):
+        return jsonify({"error": "user_id must be an integer", "code": 400}), 400
+    rows = fetch_translations(
+        current_app.config["DATABASE_PATH"],
+        query=query,
+        gesture=gesture,
+        user_id=user_id,
+        limit=200,
+    )
+    buffer = io.StringIO(newline="")
+    writer = csv.writer(buffer)
+    writer.writerow(["id", "label", "confidence", "timestamp", "user_name", "user_email", "audio_path"])
+    for row in rows:
+        writer.writerow([
+            row["id"],
+            row["gesture_label"],
+            f"{float(row['confidence'] or 0.0) * 100.0:.2f}%",
+            row["created_at"],
+            row["user_name"],
+            row["user_email"],
+            row["audio_path"] or "",
+        ])
+    response = Response(buffer.getvalue(), mimetype="text/csv")
+    response.headers["Content-Disposition"] = "attachment; filename=signconnect_admin_translations.csv"
+    return response
+
+
+@api_bp.post("/api/admin/system/config")
+def admin_update_config() -> tuple[Response, int]:
+    """Update runtime configuration from the signed-in admin dashboard."""
+    auth_error = _authorize_admin_or_csrf()
+    if auth_error is not None:
+        return auth_error
+    payload = request.get_json(silent=True) or request.form or {}
+    return _apply_runtime_config(payload)
+
+
+@api_bp.post("/api/admin/system/clear-history")
+def admin_clear_all_history() -> tuple[Response, int]:
+    """Clear all translation history rows for system maintenance."""
+    auth_error = _authorize_admin_or_csrf()
+    if auth_error is not None:
+        return auth_error
+    with get_connection(current_app.config["DATABASE_PATH"]) as connection:
+        deleted = connection.execute("DELETE FROM translations").rowcount
+    return jsonify({"status": "cleared", "deleted": int(deleted or 0)}), 200
+
+
+@api_bp.post("/api/admin/system/clear-logs")
+def admin_clear_logs() -> tuple[Response, int]:
+    """Clear the configured rotating log file when one is enabled."""
+    auth_error = _authorize_admin_or_csrf()
+    if auth_error is not None:
+        return auth_error
+    log_file = os.getenv("LOG_FILE", "").strip()
+    if not log_file:
+        log_file = str((Path(current_app.root_path) / "logs" / "signconnect.log"))
+    log_path = Path(log_file)
+    if not log_path.exists():
+        return jsonify({"status": "idle", "message": "No log file available to clear."}), 200
+    log_path.write_text("", encoding="utf-8")
+    return jsonify({"status": "cleared", "path": str(log_path)}), 200
+
+
+@api_bp.post("/api/admin/system/reload-model")
+def admin_reload_model() -> tuple[dict[str, object], int]:
+    """Alias route used by the admin dashboard actions panel."""
+    return reload_model()

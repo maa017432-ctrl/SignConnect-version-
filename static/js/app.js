@@ -1050,8 +1050,10 @@
    * Apply theme to document
    */
   function applyTheme(theme) {
-    document.documentElement.setAttribute("data-theme", theme || "dark");
-    document.body.setAttribute("data-theme", theme || "dark");
+    const nextTheme = theme || "dark";
+    document.documentElement.setAttribute("data-theme", nextTheme);
+    document.body.setAttribute("data-theme", nextTheme);
+    window.dispatchEvent(new CustomEvent("themeChanged", { detail: { theme: nextTheme } }));
   }
 
   /* ── Status dot helpers ───────────────────────────────────── */
@@ -2030,7 +2032,9 @@
   bindButtons();
   _applyAutoSpeakButton();  // reflect persisted auto-speak state on load
   markActiveNav();
-  loadGestureReferences();
+  if (practiceBtn || practiceList || gestureCanvas) {
+    loadGestureReferences();
+  }
 
   /* Translator page */
   if (video) {
@@ -2052,6 +2056,6 @@
   if (video) {
     statusPollTimer = setInterval(pollStatus, STATUS_MS);
     pollStatus();
+    fpsPollTimer = setInterval(updateFpsDisplay, 1000);
   }
-  fpsPollTimer = setInterval(updateFpsDisplay, 1000);
 })();

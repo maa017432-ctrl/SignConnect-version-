@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import atexit
 import logging
+from collections import deque
 from pathlib import Path
+from threading import Lock
 
 from dotenv import load_dotenv
 from flasgger import Swagger
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, session
 from flask.wrappers import Response
 from flask_cors import CORS
 from flask_socketio import SocketIO
@@ -161,6 +163,22 @@ def create_app() -> Flask:
     app.extensions["prediction_smoother"] = smoother
     app.extensions["sentence_builder"]    = sentence_builder
     app.extensions["socketio"]            = socketio
+    runtime_metrics_lock = Lock()
+    app.extensions["runtime_metrics_lock"] = runtime_metrics_lock
+    app.extensions["runtime_metrics"] = {
+        "connected_clients": 0,
+        "connected_users": 0,
+        "connections": {},
+        "prediction_events": 0,
+        "last_prediction_at": None,
+        "last_prediction_label": None,
+        "last_prediction_confidence": 0.0,
+        "model_status": getattr(classifier, "model_type", "unknown"),
+        "demo_mode": bool(classifier.is_demo_mode),
+        "camera_index": camera_manager.camera_index,
+        "confidence_threshold": classifier.confidence_threshold,
+        "inference_samples": deque(maxlen=120),
+    }
     app.extensions["latest_prediction"]   = {
         "label": None,
         "confidence": 0.0,
@@ -169,6 +187,35 @@ def create_app() -> Flask:
         "top_candidates": [],
         "coaching": {"state": "error", "issue": "missing", "message": "Hand not detected"},
     }
+
+    @socketio.on("connect")
+    def _track_socket_connect() -> None:
+        runtime_metrics = app.extensions.get("runtime_metrics")
+        if runtime_metrics is None:
+            return
+        sid = request.sid
+        user_key = session.get("user_id") or f"guest:{sid}"
+        with runtime_metrics_lock:
+            connections = runtime_metrics.setdefault("connections", {})
+            connections[sid] = user_key
+            runtime_metrics["connected_clients"] = len(connections)
+            runtime_metrics["connected_users"] = len(
+                {value for value in connections.values() if not str(value).startswith("guest:")}
+            )
+
+    @socketio.on("disconnect")
+    def _track_socket_disconnect() -> None:
+        runtime_metrics = app.extensions.get("runtime_metrics")
+        if runtime_metrics is None:
+            return
+        sid = request.sid
+        with runtime_metrics_lock:
+            connections = runtime_metrics.setdefault("connections", {})
+            connections.pop(sid, None)
+            runtime_metrics["connected_clients"] = len(connections)
+            runtime_metrics["connected_users"] = len(
+                {value for value in connections.values() if not str(value).startswith("guest:")}
+            )
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)

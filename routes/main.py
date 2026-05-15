@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+import re
 
 from flask import (
     Blueprint,
@@ -15,6 +16,7 @@ from flask import (
 )
 from flask.wrappers import Response
 
+from database.admin_queries import build_dashboard_payload
 from database.db import get_connection
 
 
@@ -22,6 +24,11 @@ main_bp = Blueprint("main", __name__)
 _LABEL_SOURCE_MAP = "label_map"
 _LABEL_SOURCE_CONFIG = "config"
 _FALLBACK_LABEL_PREFIX = "Class"
+
+
+def _slugify_label(label: str) -> str:
+    """Return a filesystem-friendly landmark preview key for a label."""
+    return re.sub(r"[^a-z0-9]+", "_", label.strip().lower()).strip("_")
 
 
 def _user_ctx() -> dict:
@@ -135,9 +142,14 @@ def history() -> str:
 def dictionary() -> str:
     """Render the gesture dictionary page."""
     labels, labels_source = _supported_dictionary_labels()
+    dictionary_items = [
+        {"label": label, "landmark_key": _slugify_label(label)}
+        for label in labels
+    ]
     return render_template(
         "dictionary.html",
         labels=labels,
+        dictionary_items=dictionary_items,
         labels_source=labels_source,
         labels_from_config=(labels_source == _LABEL_SOURCE_CONFIG),
         **_user_ctx(),
@@ -177,69 +189,12 @@ def admin() -> str | Response:
     if not session.get("user_id"):
         return redirect(url_for("auth.signin_get"))
 
-    with get_connection(current_app.config["DATABASE_PATH"]) as connection:
-        summary = connection.execute(
-            """
-            SELECT
-                (SELECT COUNT(*) FROM translations) AS total_translations,
-                (SELECT COUNT(*) FROM users) AS total_users,
-                (SELECT COUNT(DISTINCT user_id) FROM translations WHERE user_id IS NOT NULL) AS active_users,
-                (SELECT COUNT(*) FROM translations WHERE DATE(created_at) = DATE('now')) AS translations_today,
-                (SELECT AVG(confidence) FROM translations WHERE confidence IS NOT NULL) AS average_confidence
-            """
-        ).fetchone()
-
-        top_gestures = connection.execute(
-            """
-            SELECT gesture_label, COUNT(*) AS total
-            FROM translations
-            GROUP BY gesture_label
-            ORDER BY total DESC, gesture_label ASC
-            LIMIT 6
-            """
-        ).fetchall()
-
-        confidence_by_gesture = connection.execute(
-            """
-            SELECT gesture_label, AVG(confidence) AS avg_confidence
-            FROM translations
-            WHERE confidence IS NOT NULL
-            GROUP BY gesture_label
-            HAVING COUNT(*) >= 1
-            ORDER BY avg_confidence DESC, gesture_label ASC
-            LIMIT 6
-            """
-        ).fetchall()
-
-        labels, totals = _translations_over_time(connection)
-
-    stats = {
-        "total_translations": int(summary["total_translations"] or 0),
-        "total_users": int(summary["total_users"] or 0),
-        "active_users": int(summary["active_users"] or 0),
-        "translations_today": int(summary["translations_today"] or 0),
-        "average_confidence": round(float(summary["average_confidence"] or 0.0) * 100, 1),
-    }
-    chart_data = {
-        "translations_over_time": {
-            "labels": labels,
-            "values": totals,
-        },
-        "top_gestures": {
-            "labels": [row["gesture_label"] for row in top_gestures] or ["No data yet"],
-            "values": [int(row["total"]) for row in top_gestures] or [1],
-        },
-        "confidence_by_gesture": {
-            "labels": [row["gesture_label"] for row in confidence_by_gesture] or ["No data yet"],
-            "values": [
-                round(float(row["avg_confidence"] or 0.0) * 100, 1)
-                for row in confidence_by_gesture
-            ] or [0],
-        },
-    }
+    dashboard_payload = build_dashboard_payload(
+        current_app.config["DATABASE_PATH"],
+        current_app.extensions.get("runtime_metrics") or {},
+    )
     return render_template(
         "admin.html",
-        stats=stats,
-        chart_data=chart_data,
+        dashboard_payload=dashboard_payload,
         **_user_ctx(),
     )

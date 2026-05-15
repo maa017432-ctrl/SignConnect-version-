@@ -5,256 +5,94 @@
 {% block content %}
 <div class="sc-page">
   <div class="sc-page-container">
-
-    <!-- Page Header -->
     <div class="sc-page-header sc-reveal">
       <div>
         <h1 class="sc-page-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-page-title-icon"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
           Supported Signs Dictionary
         </h1>
-        <p class="sc-page-subtitle">Browse all {{ labels|length }} signs currently supported by the model vocabulary</p>
+        <p class="sc-page-subtitle">Browse {{ labels|length }} supported signs and open a lightweight landmark preview without freezing the UI.</p>
       </div>
       <div class="sc-page-actions">
-        <span class="sc-badge">{{ labels|length }} signs ({{ "label map" if not labels_from_config else "config fallback" }})</span>
+        <span class="sc-badge">{{ labels|length }} signs</span>
+        <span class="sc-badge">{{ "config fallback" if labels_from_config else "label map" }}</span>
       </div>
     </div>
 
-    <!-- Content Grid -->
     <div class="sc-dict-layout sc-dict-layout--full">
-
-      <!-- Main: Gesture Grid -->
       <div class="sc-dict-main">
-
-        <!-- Search Widget -->
-        <div class="sc-widget sc-reveal" data-delay="0">
-          <div class="sc-widget-body" style="padding:16px">
+        <section class="sc-widget sc-reveal" data-delay="0" aria-label="Dictionary search">
+          <div class="sc-widget-body sc-dict-toolbar">
             <div class="sc-search-wrap">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input id="dict-search" type="text" placeholder="Search supported signs…" class="sc-search-input">
+              <input id="dict-search" type="search" placeholder="Search supported signs…" class="sc-search-input" autocomplete="off" spellcheck="false">
             </div>
-            <p id="dict-search-meta" class="sc-page-subtitle" style="margin:10px 2px 0">Showing {{ labels|length }} of {{ labels|length }} signs</p>
+            <div class="sc-dict-toolbar-meta">
+              <p id="dict-search-meta" class="sc-page-subtitle">Showing {{ labels|length }} of {{ labels|length }} signs</p>
+              <p class="sc-dict-preview-note">Landmark previews load from optimized static images for smooth browsing.</p>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Gesture Cards Grid -->
-        <div id="dict-grid" class="sc-dict-grid sc-reveal" data-delay="100">
-          {% for label in labels %}
-          <div class="sc-dict-card" data-label="{{ label|lower }}">
-            <div class="sc-dict-card-icon">
+        <section id="dict-grid" class="sc-dict-grid sc-reveal" data-delay="100" aria-label="Supported signs grid">
+          {% for item in dictionary_items %}
+          <button
+            type="button"
+            class="sc-dict-card"
+            data-label="{{ item.label|lower }}"
+            data-landmark-key="{{ item.landmark_key }}"
+            data-display-label="{{ item.label }}"
+            aria-label="Open landmark preview for {{ item.label }}"
+          >
+            <span class="sc-dict-card-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
-            </div>
-            <span class="sc-dict-label">{{ label }}</span>
-          </div>
+            </span>
+            <span class="sc-dict-label">{{ item.label }}</span>
+            <span class="sc-dict-card-hint">Preview landmarks</span>
+          </button>
           {% endfor %}
-        </div>
-        <p id="dict-no-results" class="sc-page-subtitle" style="display:none;margin:6px 2px 0">No supported signs match your search.</p>
+        </section>
+        <p id="dict-no-results" class="sc-page-subtitle sc-dict-empty" hidden>No supported signs match your search.</p>
       </div>
-
     </div>
   </div>
 </div>
 
-<!-- ── GESTURE MODAL ── -->
 <div id="gesture-modal" class="sc-gesture-modal" role="dialog" aria-modal="true" aria-labelledby="gesture-modal-title" aria-hidden="true">
-  <div class="sc-gesture-modal-backdrop" id="gesture-modal-backdrop"></div>
-  <div class="sc-gesture-modal-box">
-    <button class="sc-gesture-modal-close" id="gesture-modal-close" aria-label="Close modal">
+  <div class="sc-gesture-modal-backdrop" data-modal-close="true"></div>
+  <div class="sc-gesture-modal-box" tabindex="-1">
+    <button class="sc-gesture-modal-close" id="gesture-modal-close" aria-label="Close modal" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
     <div class="sc-gesture-modal-header">
-      <div class="sc-gesture-modal-icon">
+      <div class="sc-gesture-modal-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
       </div>
       <div>
+        <p class="sc-gesture-modal-kicker">AI landmark preview</p>
         <h2 id="gesture-modal-title" class="sc-gesture-modal-title">—</h2>
-        <p id="gesture-modal-desc" class="sc-gesture-modal-desc"></p>
+        <p id="gesture-modal-desc" class="sc-gesture-modal-desc">Optimized reference preview for comparing wrist angle, finger pose, and hand silhouette.</p>
       </div>
     </div>
-    <div class="sc-gesture-modal-canvas-wrap">
-      <canvas id="gesture-canvas" class="sc-gesture-canvas" width="320" height="320" aria-label="Hand landmark skeleton"></canvas>
-      <p id="gesture-canvas-fallback" class="sc-gesture-canvas-fallback" style="display:none">No landmark data available for this sign.</p>
+    <div class="sc-gesture-modal-figure">
+      <div id="gesture-modal-loading" class="sc-gesture-loading" aria-live="polite">
+        <span class="sc-gesture-loading-dot"></span>
+        Loading landmark preview…
+      </div>
+      <img id="gesture-preview-image" class="sc-gesture-preview-image" alt="" hidden>
+      <div id="gesture-preview-fallback" class="sc-gesture-preview-fallback" hidden>
+        <strong>Landmark preview not available yet</strong>
+        <span>This sign does not have a generated preview image yet.</span>
+      </div>
     </div>
-    <div id="gesture-modal-difficulty" class="sc-gesture-modal-footer"></div>
+    <div class="sc-gesture-modal-footer">
+      <span class="sc-gesture-pill">Static landmark reference</span>
+      <span class="sc-gesture-pill sc-gesture-pill--muted">Fast, smooth, and cache-friendly</span>
+    </div>
   </div>
 </div>
+{% endblock %}
 
-<script>
-(function(){
-  /* ── Search ── */
-  var search=document.getElementById("dict-search");
-  var cards=document.querySelectorAll(".sc-dict-card");
-  var empty=document.getElementById("dict-no-results");
-  var meta=document.getElementById("dict-search-meta");
-  var total=cards.length;
-  if(!search)return;
-  function update(){
-    var q=search.value.trim().toLowerCase();
-    var visible=0;
-    cards.forEach(function(c){
-      var show=c.dataset.label.indexOf(q)!==-1;
-      c.style.display=show?"":"none";
-      if(show)visible+=1;
-    });
-    if(meta){meta.textContent="Showing "+visible+" of "+total+" signs";}
-    if(empty){empty.style.display=visible===0?"":"none";}
-  }
-  search.addEventListener("input",function(){update();});
-  update();
-
-  /* ── Modal ── */
-  var modal=document.getElementById("gesture-modal");
-  var backdrop=document.getElementById("gesture-modal-backdrop");
-  var closeBtn=document.getElementById("gesture-modal-close");
-  var titleEl=document.getElementById("gesture-modal-title");
-  var descEl=document.getElementById("gesture-modal-desc");
-  var diffEl=document.getElementById("gesture-modal-difficulty");
-  var canvas=document.getElementById("gesture-canvas");
-  var fallback=document.getElementById("gesture-canvas-fallback");
-  var ctx=canvas.getContext("2d");
-
-  // Landmark data keyed by lowercase label
-  var gestureDB=null;
-
-  // Drawing color constants (matches SignConnect purple design system)
-  var COLOR_CANVAS_BG="#050816";
-  var COLOR_CONNECTION="rgba(139,92,246,0.55)";
-  var COLOR_TIP_GLOW="rgba(167,139,250,0.18)";
-  var COLOR_TIP_DOT="#a78bfa";
-  var COLOR_JOINT_DOT="#7c3aed";
-  var COLOR_DOT_STROKE="rgba(255,255,255,0.35)";
-
-  // MediaPipe hand landmark fingertip indices:
-  // 4=thumb tip, 8=index tip, 12=middle tip, 16=ring tip, 20=pinky tip
-  var FINGERTIP_INDICES=[4,8,12,16,20];
-
-  // Difficulty badge colors
-  var DIFFICULTY_COLORS={easy:"#22c55e",medium:"#f59e0b",hard:"#ef4444"};
-
-  function loadGestureDB(cb){
-    if(gestureDB){cb(gestureDB);return;}
-    fetch("/static/data/gesture_references.json")
-      .then(function(r){return r.json();})
-      .then(function(data){gestureDB=data;cb(data);})
-      .catch(function(err){
-        console.error("[SignConnect] Failed to load gesture_references.json:", err);
-        gestureDB={};cb({});
-      });
-  }
-
-  function drawLandmarks(data){
-    var W=canvas.width, H=canvas.height;
-    ctx.clearRect(0,0,W,H);
-
-    ctx.fillStyle=COLOR_CANVAS_BG;
-    ctx.fillRect(0,0,W,H);
-
-    var lm=data.landmarks;
-    if(!lm||!lm.length){return false;}
-
-    var padding=28;
-    var drawW=W-padding*2;
-    var drawH=H-padding*2;
-
-    // Draw bone connections
-    var conns=data.connections||[];
-    ctx.strokeStyle=COLOR_CONNECTION;
-    ctx.lineWidth=2;
-    ctx.lineCap="round";
-    conns.forEach(function(pair){
-      var a=lm[pair[0]], b=lm[pair[1]];
-      if(!a||!b)return;
-      ctx.beginPath();
-      ctx.moveTo(padding+a.x*drawW, padding+a.y*drawH);
-      ctx.lineTo(padding+b.x*drawW, padding+b.y*drawH);
-      ctx.stroke();
-    });
-
-    // Draw landmark dots (fingertips larger with glow)
-    lm.forEach(function(pt,i){
-      var px=padding+pt.x*drawW;
-      var py=padding+pt.y*drawH;
-      var isTip=FINGERTIP_INDICES.indexOf(i)!==-1;
-      var r=isTip?7:4.5;
-
-      if(isTip){
-        ctx.beginPath();
-        ctx.arc(px,py,r+4,0,Math.PI*2);
-        ctx.fillStyle=COLOR_TIP_GLOW;
-        ctx.fill();
-      }
-
-      ctx.beginPath();
-      ctx.arc(px,py,r,0,Math.PI*2);
-      ctx.fillStyle=isTip?COLOR_TIP_DOT:COLOR_JOINT_DOT;
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(px,py,r,0,Math.PI*2);
-      ctx.strokeStyle=COLOR_DOT_STROKE;
-      ctx.lineWidth=1;
-      ctx.stroke();
-    });
-
-    return true;
-  }
-
-  function openModal(label){
-    var displayLabel=label.replace(/_/g," ");
-    titleEl.textContent=displayLabel.charAt(0).toUpperCase()+displayLabel.slice(1);
-    descEl.textContent="";
-    diffEl.innerHTML="";
-    fallback.style.display="none";
-    canvas.style.display="";
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle=COLOR_CANVAS_BG;
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-
-    modal.setAttribute("aria-hidden","false");
-    modal.classList.add("sc-gesture-modal--open");
-    document.body.style.overflow="hidden";
-
-    loadGestureDB(function(db){
-      var key=label.toLowerCase().replace(/ /g,"_");
-      var data=db[key]||db[label.toLowerCase()];
-      if(data){
-        if(data.description){descEl.textContent=data.description;}
-        if(data.difficulty){
-          var c=DIFFICULTY_COLORS[data.difficulty]||"#94a3b8";
-          diffEl.innerHTML='<span class="sc-gesture-difficulty" style="color:'+c+'">'+
-            data.difficulty.charAt(0).toUpperCase()+data.difficulty.slice(1)+' difficulty</span>';
-        }
-        var drawn=drawLandmarks(data);
-        if(!drawn){canvas.style.display="none";fallback.style.display="";}
-      } else {
-        canvas.style.display="none";
-        fallback.style.display="";
-      }
-    });
-  }
-
-  function closeModal(){
-    modal.classList.remove("sc-gesture-modal--open");
-    modal.setAttribute("aria-hidden","true");
-    document.body.style.overflow="";
-  }
-
-  cards.forEach(function(card){
-    card.addEventListener("click",function(){
-      openModal(card.dataset.label);
-    });
-    card.setAttribute("title","View gesture skeleton");
-    card.setAttribute("tabindex","0");
-    card.addEventListener("keydown",function(e){
-      if(e.key==="Enter"||e.key===" "){e.preventDefault();openModal(card.dataset.label);}
-    });
-  });
-
-  closeBtn.addEventListener("click",closeModal);
-  backdrop.addEventListener("click",closeModal);
-  document.addEventListener("keydown",function(e){
-    if(e.key==="Escape"&&modal.classList.contains("sc-gesture-modal--open")){closeModal();}
-  });
-})();
-</script>
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/dictionary.js') }}"></script>
 {% endblock %}
