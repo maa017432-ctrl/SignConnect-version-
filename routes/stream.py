@@ -29,6 +29,7 @@ stream_bp = Blueprint("stream", __name__)
 _CAMERA_RETRY_INTERVAL_S = 5.0
 _JPEG_QUALITY = max(0, min(100, int(os.environ.get("MJPEG_JPEG_QUALITY", "75"))))  # clamped 0-100
 _TARGET_FPS = 30
+_PREDICTION_EMIT_MIN_INTERVAL_S = 0.12
 _prediction_lock = threading.Lock()
 _coaching_lock = threading.Lock()
 _coaching_centroids: deque[tuple[float, float]] = deque(maxlen=8)
@@ -69,6 +70,33 @@ def _emit_prediction(app: Any, payload: dict[str, object]) -> None:
         sio.emit("prediction", payload)
     except Exception:
         LOGGER.debug("SocketIO emit failed", exc_info=True)
+
+
+def _should_emit_prediction(app: Any, payload: dict[str, object]) -> bool:
+    """Throttle prediction push frequency while still emitting meaningful changes."""
+    now = time.monotonic()
+    state = app.extensions.get("prediction_emit_state")
+    if state is None:
+        state = {"last_emit_at": 0.0, "last_key": None}
+        app.extensions["prediction_emit_state"] = state
+    confidence_value = payload.get("confidence")
+    try:
+        confidence_bucket = round(float(confidence_value or 0.0), 2)
+    except (TypeError, ValueError):
+        confidence_bucket = 0.0
+    key = (
+        payload.get("smoothed_label"),
+        payload.get("label"),
+        confidence_bucket,
+        (payload.get("coaching") or {}).get("issue"),
+        payload.get("sentence"),
+    )
+    elapsed = now - state.get("last_emit_at", 0.0)
+    if key != state.get("last_key") or elapsed >= _PREDICTION_EMIT_MIN_INTERVAL_S:
+        state["last_key"] = key
+        state["last_emit_at"] = now
+        return True
+    return False
 
 
 def _infer_coaching(landmarks: np.ndarray | None) -> dict[str, object]:
@@ -245,7 +273,8 @@ def _annotate_and_encode_jpeg(app: Any, frame: np.ndarray) -> bytes | None:
                     samples = runtime_metrics.setdefault("inference_samples", deque(maxlen=120))
                     samples.append(float(inference_ms))
 
-        _emit_prediction(app, prediction_payload)
+        if _should_emit_prediction(app, prediction_payload):
+            _emit_prediction(app, prediction_payload)
 
         if inference_ms is not None:
             LOGGER.debug(

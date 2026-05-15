@@ -176,14 +176,17 @@ def status() -> tuple[dict[str, object], int]:
     classifier = current_app.extensions["classifier"]
     tts_engine = current_app.extensions["tts_engine"]
     gesture_detector = current_app.extensions["gesture_detector"]
-    camera_frame_route = any(
-        rule.rule in ("/camera_frame", "/api/camera_frame")
-        for rule in current_app.url_map.iter_rules()
-    )
+    camera_frame_route = current_app.extensions.get("camera_frame_route_available")
+    if camera_frame_route is None:
+        camera_frame_route = any(
+            rule.rule in ("/camera_frame", "/api/camera_frame")
+            for rule in current_app.url_map.iter_rules()
+        )
+        current_app.extensions["camera_frame_route_available"] = camera_frame_route
     return (
         jsonify(
             {
-                "camera": camera_manager.is_available(),
+                "camera": camera_manager.is_available(passive=True),
                 "model": classifier.is_available,
                 "model_demo_mode": classifier.is_demo_mode,
                 "model_type": getattr(classifier, "model_type", "unknown"),
@@ -796,7 +799,7 @@ def get_camera() -> tuple[dict[str, object], int]:
                 "configured_index": int(getattr(camera_manager, "camera_index", 0)),
                 "active_index": camera_manager.active_camera_index,
                 "is_streaming": bool(camera_manager.is_streaming),
-                "is_available": bool(camera_manager.is_available()),
+                "is_available": bool(camera_manager.is_available(passive=True)),
             }
         ),
         200,
