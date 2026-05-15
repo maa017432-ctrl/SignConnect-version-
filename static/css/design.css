@@ -169,6 +169,16 @@ a:hover {
   transform: translateY(1px);
 }
 
+.btn:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
+}
+
 .btn-primary {
   background: var(--color-primary);
   color: white;
@@ -1850,9 +1860,32 @@ body[data-theme="light"] {
   --color-primary-hover: #6D28D9;
   --color-primary-light: #8B5CF6;
 
+  --sc-light-app-bg: #EEF4FF;
+  --sc-light-surface: #FFFFFF;
+  --sc-light-surface-alt: #F8FBFF;
+  --sc-light-surface-soft: #F3F7FD;
+  --sc-light-border: rgba(15, 23, 42, 0.12);
+  --sc-light-border-strong: rgba(15, 23, 42, 0.18);
+  --sc-light-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+  --sc-light-shadow-lg: 0 24px 60px rgba(15, 23, 42, 0.12);
+  --sc-light-text: #0F172A;
+  --sc-light-text-muted: #475569;
+  --sc-light-text-soft: #64748B;
+  --sc-light-accent-soft: rgba(124, 58, 237, 0.10);
+  --sc-light-accent-border: rgba(124, 58, 237, 0.26);
+
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+html[data-theme="light"] .btn:focus-visible,
+html[data-theme="light"] button:focus-visible,
+html[data-theme="light"] a:focus-visible,
+html[data-theme="light"] input:focus-visible,
+html[data-theme="light"] select:focus-visible,
+html[data-theme="light"] textarea:focus-visible {
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.14);
 }
 
 /* ── RTL (Right-to-Left) Language Support ── */

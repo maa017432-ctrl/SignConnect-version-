@@ -200,59 +200,77 @@
   const COACHING_MESSAGES = {
     no_hand: {
       state: "error",
-      icon: "❌",
+      icon: "error",
       text: "Hand not detected",
       priority: 1,
     },
     low_confidence: {
       state: "error",
-      icon: "❌",
+      icon: "error",
       text: "Gesture not recognized",
       priority: 1,
     },
     hand_not_centered: {
       state: "warning",
-      icon: "⚠️",
+      icon: "warning",
       text: "Center your hand",
       priority: 2,
     },
     adjust_distance: {
       state: "warning",
-      icon: "⚠️",
+      icon: "warning",
       text: "Move hand closer",
       priority: 2,
     },
     hold_steady: {
       state: "warning",
-      icon: "⚠️",
+      icon: "warning",
       text: "Hold steady",
       priority: 2,
     },
     unstable: {
       state: "warning",
-      icon: "⚠️",
+      icon: "warning",
       text: "Avoid quick movement",
       priority: 2,
     },
     info: {
       state: "info",
-      icon: "ℹ️",
+      icon: "info",
       text: "Keep hand steady to confirm",
       priority: 3,
     },
     good_detection: {
       state: "success",
-      icon: "✅",
+      icon: "success",
       text: "Good position",
       priority: 4,
     },
     gesture_captured: {
       state: "success",
-      icon: "✅",
+      icon: "success",
       text: "Gesture captured successfully",
       priority: 4,
     },
   };
+
+  const COACHING_ICON_SVGS = {
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 10v5"></path><path d="M12 7h.01"></path></svg>',
+    warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.72 3h16.92a2 2 0 0 0 1.72-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>',
+    error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg>',
+    success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12.5 2.5 2.5 4.5-5"></path></svg>',
+  };
+  const COACHING_ICON_NODES = {};
+
+  function renderCoachingIcon(iconName) {
+    if (!coachingIcon) return;
+    const key = COACHING_ICON_SVGS[iconName] ? iconName : "info";
+    if (!COACHING_ICON_NODES[key]) {
+      const parsed = new DOMParser().parseFromString(COACHING_ICON_SVGS[key], "image/svg+xml");
+      COACHING_ICON_NODES[key] = parsed.documentElement;
+    }
+    coachingIcon.replaceChildren(COACHING_ICON_NODES[key].cloneNode(true));
+  }
 
   /**
    * Determine the coaching message based on current prediction state
@@ -267,7 +285,7 @@
       const coaching = data.coaching;
       return {
         state: coaching.state || "info",
-        icon: coaching.state === "error" ? "❌" : coaching.state === "success" ? "✅" : coaching.state === "warning" ? "⚠️" : "ℹ️",
+        icon: coaching.state === "error" ? "error" : coaching.state === "success" ? "success" : coaching.state === "warning" ? "warning" : "info",
         text: coaching.message || "Center your hand",
       };
     }
@@ -388,7 +406,7 @@
     if (!coachingContainer || !coachingMessage || !coachingIcon || !coachingText) return;
 
     // Update message content
-    coachingIcon.textContent = message.icon;
+    renderCoachingIcon(message.icon);
     coachingText.textContent = message.text;
 
     // Remove all previous state classes
