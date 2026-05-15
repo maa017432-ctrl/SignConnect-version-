@@ -85,42 +85,127 @@
     return `sc-admin-status sc-admin-status--${String(status || "inactive").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   }
 
+  function clearTable(body, colspan, message) {
+    body.replaceChildren();
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = colspan;
+    cell.className = "sc-empty-state";
+    const paragraph = document.createElement("p");
+    paragraph.textContent = message;
+    cell.appendChild(paragraph);
+    row.appendChild(cell);
+    body.appendChild(row);
+  }
+
   function renderUsers(users) {
     if (!Array.isArray(users) || users.length === 0) {
-      usersBody.innerHTML = '<tr><td colspan="6" class="sc-empty-state"><p>No users matched the current search.</p></td></tr>';
+      clearTable(usersBody, 6, "No users matched the current search.");
       return;
     }
-    usersBody.innerHTML = users.map((user) => `
-      <tr>
-        <td><strong>${escHtml(user.full_name)}</strong><br><span class="sc-muted">${escHtml(user.email)}</span></td>
-        <td><span class="${statusClass(user.activity_status)}">${escHtml(user.activity_status)}</span></td>
-        <td>${escHtml(user.translations)}</td>
-        <td>${formatConfidence(user.avg_confidence)}</td>
-        <td>${escHtml(user.last_active || "No activity yet")}</td>
-        <td>
-          <div class="sc-admin-inline-actions">
-            <button type="button" class="sc-btn sc-btn--sm" data-user-action="toggle-suspend" data-user-id="${user.id}" data-user-suspended="${user.is_suspended ? "true" : "false"}">${user.is_suspended ? "Reactivate" : "Suspend"}</button>
-            <button type="button" class="sc-btn sc-btn--sm sc-btn--danger" data-user-action="delete" data-user-id="${user.id}">Delete</button>
-          </div>
-        </td>
-      </tr>
-    `).join("");
+
+    const fragment = document.createDocumentFragment();
+    users.forEach((user) => {
+      const row = document.createElement("tr");
+
+      const userCell = document.createElement("td");
+      const name = document.createElement("strong");
+      name.textContent = user.full_name;
+      const email = document.createElement("span");
+      email.className = "sc-muted";
+      email.textContent = user.email;
+      userCell.append(name, document.createElement("br"), email);
+
+      const statusCell = document.createElement("td");
+      const status = document.createElement("span");
+      status.className = statusClass(user.activity_status);
+      status.textContent = user.activity_status;
+      statusCell.appendChild(status);
+
+      const translationsCell = document.createElement("td");
+      translationsCell.textContent = String(user.translations);
+
+      const confidenceCell = document.createElement("td");
+      confidenceCell.textContent = formatConfidence(user.avg_confidence);
+
+      const activityCell = document.createElement("td");
+      activityCell.textContent = user.last_active || "No activity yet";
+
+      const actionsCell = document.createElement("td");
+      const actions = document.createElement("div");
+      actions.className = "sc-admin-inline-actions";
+
+      const suspendButton = document.createElement("button");
+      suspendButton.type = "button";
+      suspendButton.className = "sc-btn sc-btn--sm";
+      suspendButton.dataset.userAction = "toggle-suspend";
+      suspendButton.dataset.userId = String(user.id);
+      suspendButton.dataset.userSuspended = user.is_suspended ? "true" : "false";
+      suspendButton.textContent = user.is_suspended ? "Reactivate" : "Suspend";
+
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "sc-btn sc-btn--sm sc-btn--danger";
+      deleteButton.dataset.userAction = "delete";
+      deleteButton.dataset.userId = String(user.id);
+      deleteButton.textContent = "Delete";
+
+      actions.append(suspendButton, deleteButton);
+      actionsCell.appendChild(actions);
+      row.append(userCell, statusCell, translationsCell, confidenceCell, activityCell, actionsCell);
+      fragment.appendChild(row);
+    });
+
+    usersBody.replaceChildren(fragment);
   }
 
   function renderTranslations(rows) {
     if (!Array.isArray(rows) || rows.length === 0) {
-      translationsBody.innerHTML = '<tr><td colspan="5" class="sc-empty-state"><p>No translation records matched the current filters.</p></td></tr>';
+      clearTable(translationsBody, 5, "No translation records matched the current filters.");
       return;
     }
-    translationsBody.innerHTML = rows.map((row) => `
-      <tr>
-        <td><span class="sc-gesture-tag">${escHtml(row.gesture_label)}</span></td>
-        <td>${Number(row.confidence_pct || 0).toFixed(2)}%</td>
-        <td><strong>${escHtml(row.user_name)}</strong><br><span class="sc-muted">${escHtml(row.user_email)}</span></td>
-        <td>${escHtml(row.created_at || "—")}</td>
-        <td>${row.audio_path ? `<audio src="${escHtml(row.audio_path)}" controls preload="none" class="sc-audio"></audio>` : "—"}</td>
-      </tr>
-    `).join("");
+
+    const fragment = document.createDocumentFragment();
+    rows.forEach((row) => {
+      const tr = document.createElement("tr");
+
+      const gestureCell = document.createElement("td");
+      const tag = document.createElement("span");
+      tag.className = "sc-gesture-tag";
+      tag.textContent = row.gesture_label;
+      gestureCell.appendChild(tag);
+
+      const confidenceCell = document.createElement("td");
+      confidenceCell.textContent = `${Number(row.confidence_pct || 0).toFixed(2)}%`;
+
+      const userCell = document.createElement("td");
+      const name = document.createElement("strong");
+      name.textContent = row.user_name;
+      const email = document.createElement("span");
+      email.className = "sc-muted";
+      email.textContent = row.user_email;
+      userCell.append(name, document.createElement("br"), email);
+
+      const createdCell = document.createElement("td");
+      createdCell.textContent = row.created_at || "—";
+
+      const audioCell = document.createElement("td");
+      if (row.audio_path) {
+        const audio = document.createElement("audio");
+        audio.className = "sc-audio";
+        audio.controls = true;
+        audio.preload = "none";
+        audio.src = row.audio_path;
+        audioCell.appendChild(audio);
+      } else {
+        audioCell.textContent = "—";
+      }
+
+      tr.append(gestureCell, confidenceCell, userCell, createdCell, audioCell);
+      fragment.appendChild(tr);
+    });
+
+    translationsBody.replaceChildren(fragment);
   }
 
   function updateSummary(payload) {
