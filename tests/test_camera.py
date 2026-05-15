@@ -21,6 +21,27 @@ class _FakeCaptureClosed:
         return None
 
 
+class _FakeCaptureOpen:
+    """Fake camera that opens and returns a valid frame."""
+
+    def __init__(self) -> None:
+        import numpy as _np
+
+        self._frame = _np.zeros((2, 2, 3), dtype=_np.uint8)
+
+    def isOpened(self) -> bool:
+        return True
+
+    def set(self, *_args, **_kwargs) -> bool:
+        return True
+
+    def read(self):
+        return True, self._frame
+
+    def release(self) -> None:
+        return None
+
+
 @pytest.mark.skipif(cv2 is None, reason="OpenCV not installed")
 @patch("core.camera.cv2.VideoCapture", return_value=_FakeCaptureClosed())
 def test_unavailable_camera_raises_error(_: object) -> None:
@@ -28,6 +49,27 @@ def test_unavailable_camera_raises_error(_: object) -> None:
     manager = CameraManager()
     with pytest.raises(CameraUnavailableError):
         manager.start()
+
+
+@pytest.mark.skipif(cv2 is None, reason="OpenCV not installed")
+def test_is_available_without_probe_does_not_open_camera() -> None:
+    """Passive availability checks should never trigger a hardware open."""
+    manager = CameraManager()
+    with patch("core.camera.cv2.VideoCapture", return_value=_FakeCaptureOpen()) as mocked:
+        assert manager.is_available(probe_hardware=False) is False
+    mocked.assert_not_called()
+
+
+@pytest.mark.skipif(cv2 is None, reason="OpenCV not installed")
+@patch("core.camera.cv2.VideoCapture", return_value=_FakeCaptureOpen())
+def test_start_sets_cached_availability(_: object) -> None:
+    """A successful start should mark camera availability in cache."""
+    manager = CameraManager()
+    manager.start()
+    try:
+        assert manager.is_available(probe_hardware=False) is True
+    finally:
+        manager.stop()
 
 
 class TestGestureDetectorClose:

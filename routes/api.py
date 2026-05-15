@@ -183,7 +183,7 @@ def status() -> tuple[dict[str, object], int]:
     return (
         jsonify(
             {
-                "camera": camera_manager.is_available(),
+                "camera": camera_manager.is_available(probe_hardware=False),
                 "model": classifier.is_available,
                 "model_demo_mode": classifier.is_demo_mode,
                 "model_type": getattr(classifier, "model_type", "unknown"),

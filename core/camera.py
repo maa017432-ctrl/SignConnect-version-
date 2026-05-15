@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import sys
 import threading
 import time
 from typing import Any, Optional
@@ -34,6 +33,7 @@ class CameraManager:
         self._capture: Optional[Any] = None
         self._active_camera_index: Optional[int] = None
         self._lock = threading.Lock()
+        self._starting = False
         self._running = False
         self._thread: Optional[threading.Thread] = None
         self._latest_frame: Optional[np.ndarray] = None
@@ -71,22 +71,10 @@ class CameraManager:
         if cv2 is None:
             return None, None
         for index in self._probe_order(preferred_index):
-            # On Windows, DirectShow is often more reliable than the default MSMF backend
-            if sys.platform == "win32":
-                cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
-            else:
-                cap = cv2.VideoCapture(index)
-
+            cap = cv2.VideoCapture(index)
             if not cap.isOpened():
                 cap.release()
-                # If DSHOW fails on Windows, try default backend as fallback
-                if sys.platform == "win32":
-                    cap = cv2.VideoCapture(index)
-                    if not cap.isOpened():
-                        cap.release()
-                        continue
-                else:
-                    continue
+                continue
             try:
                 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
                 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -113,6 +101,8 @@ class CameraManager:
         if cap is not None:
             self._capture = cap
             self._active_camera_index = index
+            self._hw_probe_cache = True
+            self._hw_probe_time = time.time()
             return True
         self._capture = None
         self._active_camera_index = None
@@ -123,14 +113,16 @@ class CameraManager:
         if cv2 is None:
             raise CameraUnavailableError("OpenCV is not installed")
         with self._lock:
-            if self._running:
+            if self._running or self._starting:
                 return
-        if not self._try_init():
-            raise CameraUnavailableError("Camera not found or busy")
-        with self._lock:
+            self._starting = True
+            if not self._try_init():
+                self._starting = False
+                raise CameraUnavailableError("Camera not found or busy")
             self._running = True
             self._thread = threading.Thread(target=self._capture_loop, daemon=True)
             self._thread.start()
+            self._starting = False
             LOGGER.info("Camera capture started")
 
     def _capture_loop(self) -> None:
@@ -151,6 +143,7 @@ class CameraManager:
         """Stop capture thread and release camera resource safely."""
         with self._lock:
             self._running = False
+            self._starting = False
             if self._capture is not None:
                 self._capture.release()
                 self._capture = None
@@ -206,7 +199,7 @@ class CameraManager:
         with self._lock:
             return self._running and self._capture is not None
 
-    def is_available(self) -> bool:
+    def is_available(self, probe_hardware: bool = True) -> bool:
         """True if capture is running, or a quick probe shows hardware is usable."""
         with self._lock:
             if self._running and self._capture is not None:
@@ -217,6 +210,8 @@ class CameraManager:
             and (now - self._hw_probe_time) < self._hw_probe_ttl_seconds
         ):
             return self._hw_probe_cache
+        if not probe_hardware:
+            return False
         self._hw_probe_cache = self._probe_hardware_available()
         self._hw_probe_time = now
         return self._hw_probe_cache

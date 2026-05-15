@@ -88,8 +88,8 @@
 
   /* ── Stream state ─────────────────────────────────────────── */
   const FRAME_MS = 80;    // ~12.5 fps camera polling target
-  const STATUS_MS = 4000;
-  const PREDICT_MS = 300;   // HTTP fallback prediction poll interval
+  const STATUS_MS = 3000;
+  const PREDICT_MS = 600;   // HTTP fallback prediction poll interval
 
   const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor" class="sc-btn-icon" style="width:14px;height:14px"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
   const ICON_PLAY  = '<svg viewBox="0 0 24 24" fill="currentColor" class="sc-btn-icon" style="width:14px;height:14px"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
@@ -99,8 +99,11 @@
   let checkVideoTimer = null; // MJPEG stream readiness probe
   let statusPollTimer = null;
   let fpsPollTimer = null;
+  let streamConnectTimeout = null;
   let paused = true;
   let frameInFlight = false;
+  let statusInFlight = false;
+  let predictionInFlight = false;
   let blobUrl = null;
   let prevFrameAt = 0;
   let fpsWindow = [];   // sliding window of frame intervals (ms)
@@ -934,6 +937,7 @@
   }
 
   function initSocket() {
+    if (_socket) return;
     if (typeof io === "undefined") {
       startPredictionPoll();
       return;
@@ -1064,6 +1068,8 @@
 
   /* ── Poll /api/status (slow — health chips only) ──────────── */
   async function pollStatus() {
+    if (statusInFlight) return;
+    statusInFlight = true;
     try {
       const res = await fetch("/api/status", { cache: "no-store" });
       const data = await res.json();
@@ -1123,6 +1129,8 @@
         notifyUser("camera", "Camera error", "SignConnect could not read from the selected camera.");
         cameraNotificationSent = true;
       }
+    } finally {
+      statusInFlight = false;
     }
   }
 
@@ -1182,11 +1190,16 @@
 
   /* ── HTTP fallback poll for /api/prediction ───────────────── */
   async function pollPrediction() {
+    if (predictionInFlight) return;
+    predictionInFlight = true;
     try {
       const res = await fetch("/api/prediction", { cache: "no-store" });
       const data = await res.json();
       updatePredictionUI(data);
     } catch { /* ignore */ }
+    finally {
+      predictionInFlight = false;
+    }
   }
 
   /* ── Sentence display ─────────────────────────────────────── */
@@ -1895,7 +1908,11 @@
     if (!socketConnected) startPredictionPoll();
 
     // ── Camera connection timeout (30 s) ──
-    setTimeout(() => {
+    if (streamConnectTimeout) {
+      clearTimeout(streamConnectTimeout);
+      streamConnectTimeout = null;
+    }
+    streamConnectTimeout = setTimeout(() => {
       if (!paused && videoOverlay && !videoOverlay.classList.contains("hidden")) {
         const msg = videoOverlay.querySelector(".overlay-msg");
         if (msg && msg.textContent.includes("Connecting")) {
@@ -1927,6 +1944,7 @@
     if (streamTimer) { clearInterval(streamTimer); streamTimer = null; }
     stopPredictionPoll();
     if (checkVideoTimer) { clearInterval(checkVideoTimer); checkVideoTimer = null; }
+    if (streamConnectTimeout) { clearTimeout(streamConnectTimeout); streamConnectTimeout = null; }
     if (video) video.removeAttribute("src");
     if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; }
     prevFrameAt = 0;
