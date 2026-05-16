@@ -11,6 +11,7 @@ SignConnect is an AI-based real-time sign language translator built with Flask, 
 - Text-to-speech output via gTTS (online) with pyttsx3 offline fallback
 - Translation history stored in SQLite, scoped per signed-in user
 - User accounts (sign-up / sign-in / sign-out) with session-based auth
+- Google OAuth sign-in backed by Authlib and environment-based credentials
 - Multi-language UI and TTS support (English, Arabic, French, Spanish, German, Chinese, Japanese, Korean)
 - Demo mode when no trained model is present
 - Dark/light theme with localStorage persistence
@@ -22,6 +23,7 @@ SignConnect is an AI-based real-time sign language translator built with Flask, 
 2. Install dependencies:
    - `.venv311\Scripts\python.exe -m pip install -r requirements.txt`
 3. Copy `.env.example` to `.env` and adjust values.
+   - To enable Google sign-in, set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 4. Run:
    - `.\run.ps1`
 5. Open:

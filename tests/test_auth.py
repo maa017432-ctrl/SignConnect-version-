@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from authlib.integrations.base_client.errors import OAuthError
 
 pytest.importorskip("flask")
 
@@ -224,84 +225,89 @@ def test_signin_page_renders_google_button(client) -> None:
     body = response.get_data(as_text=True)
     assert response.status_code == 200
     assert "Continue with Google" in body
-    assert '/signin/google' in body
+    assert '/auth/google' in body
 
 
 def test_signin_google_requires_configuration(client) -> None:
     """Google sign-in route should return a friendly error when not configured."""
-    response = client.get("/signin/google", follow_redirects=False)
+    response = client.get("/auth/google", follow_redirects=False)
     assert response.status_code == 200
     assert b"Google sign-in is not configured yet" in response.data
 
 
 def test_signin_google_redirects_to_google_when_configured(client) -> None:
     """Configured Google sign-in should redirect to Google's OAuth endpoint."""
-    app = client.application
-    app.config["GOOGLE_CLIENT_ID"] = "test-client-id"
-    app.config["GOOGLE_CLIENT_SECRET"] = "test-client-secret"
+    import routes.auth as auth_routes
 
-    response = client.get("/signin/google", follow_redirects=False)
+    captured = {}
+
+    class _FakeGoogleClient:
+        def authorize_redirect(self, **kwargs):
+            captured.update(kwargs)
+            from flask import redirect
+            return redirect("https://accounts.google.com/mock-auth")
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(auth_routes, "_google_oauth_client", lambda: _FakeGoogleClient())
+
+    response = client.get("/auth/google", follow_redirects=False)
     assert response.status_code == 302
     location = response.headers["Location"]
-    assert location.startswith("https://accounts.google.com/o/oauth2/v2/auth?")
-    assert "client_id=test-client-id" in location
-    assert "response_type=code" in location
-    assert "scope=openid+email+profile" in location
+    assert location == "https://accounts.google.com/mock-auth"
+    assert captured["redirect_uri"].endswith("/auth/google/callback")
+    assert captured["prompt"] == "select_account"
 
     with client.session_transaction() as sess:
-        assert sess.get("google_oauth_state")
+        assert sess.get("google_oauth_nonce") == captured["nonce"]
+
+    monkeypatch.undo()
 
 
-def test_google_callback_rejects_invalid_state(client) -> None:
-    """Google callback should reject requests with mismatched state."""
-    app = client.application
-    app.config["GOOGLE_CLIENT_ID"] = "test-client-id"
-    app.config["GOOGLE_CLIENT_SECRET"] = "test-client-secret"
-    with client.session_transaction() as sess:
-        sess["google_oauth_state"] = "expected-state"
-
-    response = client.get(
-        "/auth/google/callback?state=other-state&code=dummy-code",
-        follow_redirects=False,
-    )
+def test_google_callback_handles_provider_error(client) -> None:
+    """Google callback should surface provider-side errors safely."""
+    response = client.get("/auth/google/callback?error=access_denied", follow_redirects=False)
     assert response.status_code == 200
-    assert b"Invalid Google sign-in state" in response.data
+    assert b"Google sign-in was cancelled or failed" in response.data
+
+
+def test_google_callback_requires_active_oauth_session(client, monkeypatch) -> None:
+    """Google callback should reject callbacks without the stored nonce."""
+    import routes.auth as auth_routes
+
+    class _FakeGoogleClient:
+        def authorize_access_token(self):
+            return {"access_token": "access-token"}
+
+    monkeypatch.setattr(auth_routes, "_google_oauth_client", lambda: _FakeGoogleClient())
+
+    response = client.get("/auth/google/callback?code=auth-code&state=state-123", follow_redirects=False)
+    assert response.status_code == 200
+    assert b"Google sign-in session expired" in response.data
 
 
 def test_google_callback_signs_in_existing_user(client, monkeypatch) -> None:
     """Google callback should sign in an existing matching user account."""
-    app = client.application
-    app.config["GOOGLE_CLIENT_ID"] = "test-client-id"
-    app.config["GOOGLE_CLIENT_SECRET"] = "test-client-secret"
     email = "google-existing@example.com"
     _register_user(client, email, "StrongPass1")
     with client.session_transaction() as sess:
-        sess["google_oauth_state"] = "state-123"
+        sess["google_oauth_nonce"] = "nonce-123"
 
-    class _FakeResponse:
-        def __init__(self, status_code, payload):
-            self.status_code = status_code
-            self._payload = payload
+    import routes.auth as auth_routes
 
-        def json(self):
-            return self._payload
+    class _FakeGoogleClient:
+        def authorize_access_token(self):
+            return {"access_token": "access-token", "id_token": "id-token"}
 
-    def _fake_post(*args, **kwargs):
-        return _FakeResponse(200, {"access_token": "access-token"})
-
-    def _fake_get(*args, **kwargs):
-        return _FakeResponse(
-            200,
-            {
+        def parse_id_token(self, token, nonce):
+            assert token["id_token"] == "id-token"
+            assert nonce == "nonce-123"
+            return {
                 "email": email,
                 "email_verified": True,
                 "name": "Google Existing",
-            },
-        )
+            }
 
-    import routes.auth as auth_routes
-    monkeypatch.setattr(auth_routes.requests, "post", _fake_post)
-    monkeypatch.setattr(auth_routes.requests, "get", _fake_get)
+    monkeypatch.setattr(auth_routes, "_google_oauth_client", lambda: _FakeGoogleClient())
 
     response = client.get(
         "/auth/google/callback?state=state-123&code=auth-code",
@@ -312,6 +318,62 @@ def test_google_callback_signs_in_existing_user(client, monkeypatch) -> None:
     with client.session_transaction() as sess:
         assert sess.get("user_email") == email
         assert sess.get("user_id") is not None
+
+
+def test_google_callback_creates_new_user_when_missing(client, monkeypatch) -> None:
+    """Google callback should auto-create a matching account when needed."""
+    from database.db import get_connection
+
+    email = "google-new-user@example.com"
+    db_path = client.application.config["DATABASE_PATH"]
+    with get_connection(db_path) as conn:
+        conn.execute("DELETE FROM users WHERE email = ?", (email,))
+
+    with client.session_transaction() as sess:
+        sess["google_oauth_nonce"] = "nonce-456"
+
+    import routes.auth as auth_routes
+
+    class _FakeGoogleClient:
+        def authorize_access_token(self):
+            return {"access_token": "access-token", "id_token": "id-token"}
+
+        def parse_id_token(self, token, nonce):
+            assert nonce == "nonce-456"
+            return {
+                "email": email,
+                "email_verified": True,
+                "name": "Google New User",
+            }
+
+    monkeypatch.setattr(auth_routes, "_google_oauth_client", lambda: _FakeGoogleClient())
+
+    response = client.get("/auth/google/callback?state=state-456&code=auth-code", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/")
+
+    with get_connection(db_path) as conn:
+        row = conn.execute("SELECT email, full_name FROM users WHERE email = ?", (email,)).fetchone()
+    assert row is not None
+    assert row["full_name"] == "Google New User"
+
+
+def test_google_callback_handles_oauth_failures(client, monkeypatch) -> None:
+    """Google callback should handle Authlib OAuth failures gracefully."""
+    import routes.auth as auth_routes
+
+    with client.session_transaction() as sess:
+        sess["google_oauth_nonce"] = "nonce-789"
+
+    class _FakeGoogleClient:
+        def authorize_access_token(self):
+            raise OAuthError(error="access_denied")
+
+    monkeypatch.setattr(auth_routes, "_google_oauth_client", lambda: _FakeGoogleClient())
+
+    response = client.get("/auth/google/callback?state=state-789&code=auth-code", follow_redirects=False)
+    assert response.status_code == 200
+    assert b"Unable to complete Google sign-in" in response.data
 
 
 
