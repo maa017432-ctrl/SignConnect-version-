@@ -11,7 +11,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-page-title-icon"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
           Supported Signs Dictionary
         </h1>
-        <p class="sc-page-subtitle">Browse {{ labels|length }} supported signs and open a lightweight landmark preview without freezing the UI.</p>
+        <p class="sc-page-subtitle">Browse and search {{ labels|length }} supported signs.</p>
       </div>
       <div class="sc-page-actions">
         <span class="sc-badge">{{ labels|length }} signs</span>
@@ -29,65 +29,23 @@
             </div>
             <div class="sc-dict-toolbar-meta">
               <p id="dict-search-meta" class="sc-page-subtitle">Showing {{ labels|length }} of {{ labels|length }} signs</p>
-              <p class="sc-dict-preview-note">Landmark previews load from optimized static images for smooth browsing.</p>
             </div>
           </div>
         </section>
 
         <section id="dict-grid" class="sc-dict-grid sc-reveal" data-delay="100" aria-label="Supported signs grid">
           {% for item in dictionary_items %}
-          <button
-            type="button"
-            class="sc-dict-card"
-            data-label="{{ item.label|lower }}"
-            data-landmark-key="{{ item.landmark_key }}"
-            data-display-label="{{ item.label }}"
-            aria-label="Open landmark preview for {{ item.label }}"
-          >
+          <article class="sc-dict-card" data-label="{{ item.label|lower }}" aria-label="Sign word: {{ item.label }}">
             <span class="sc-dict-card-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
             </span>
             <span class="sc-dict-label">{{ item.label }}</span>
-            <span class="sc-dict-card-hint">Preview landmarks</span>
-          </button>
+            <span class="sc-dict-card-hint">Sign word</span>
+          </article>
           {% endfor %}
         </section>
         <p id="dict-no-results" class="sc-page-subtitle sc-dict-empty" hidden>No supported signs match your search.</p>
       </div>
-    </div>
-  </div>
-</div>
-
-<div id="gesture-modal" class="sc-gesture-modal" role="dialog" aria-modal="true" aria-labelledby="gesture-modal-title" aria-hidden="true">
-  <div class="sc-gesture-modal-backdrop" data-modal-close="true"></div>
-  <div class="sc-gesture-modal-box" tabindex="-1">
-    <button class="sc-gesture-modal-close" id="gesture-modal-close" aria-label="Close modal" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    <div class="sc-gesture-modal-header">
-      <div class="sc-gesture-modal-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
-      </div>
-      <div>
-        <p class="sc-gesture-modal-kicker">AI landmark preview</p>
-        <h2 id="gesture-modal-title" class="sc-gesture-modal-title">—</h2>
-        <p id="gesture-modal-desc" class="sc-gesture-modal-desc">Optimized reference preview for comparing wrist angle, finger pose, and hand silhouette.</p>
-      </div>
-    </div>
-    <div class="sc-gesture-modal-figure">
-      <div id="gesture-modal-loading" class="sc-gesture-loading" aria-live="polite">
-        <span class="sc-gesture-loading-dot"></span>
-        Loading landmark preview…
-      </div>
-      <img id="gesture-preview-image" class="sc-gesture-preview-image" alt="" hidden>
-      <div id="gesture-preview-fallback" class="sc-gesture-preview-fallback" hidden>
-        <strong>Landmark preview not available yet</strong>
-        <span>This sign does not have a generated preview image yet.</span>
-      </div>
-    </div>
-    <div class="sc-gesture-modal-footer">
-      <span class="sc-gesture-pill">Static landmark reference</span>
-      <span class="sc-gesture-pill sc-gesture-pill--muted">Fast, smooth, and cache-friendly</span>
     </div>
   </div>
 </div>

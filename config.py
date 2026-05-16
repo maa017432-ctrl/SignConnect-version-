@@ -104,6 +104,8 @@ class Config:
         self.LABEL_MAP_PATH = str(root_dir / "models" / "label_map.json")
         self.AUDIO_CACHE_DIR = str(root_dir / "static" / "audio")
         self.AUDIO_CACHE_TTL_SECONDS = int(os.getenv("AUDIO_CACHE_TTL_SECONDS", "60"))
+        self.GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+        self.GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
 
         # Prediction smoother
         self.SMOOTHER_WINDOW = int(os.getenv("SMOOTHER_WINDOW", "10"))
