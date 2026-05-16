@@ -35,13 +35,13 @@
 
         <section id="dict-grid" class="sc-dict-grid sc-reveal" data-delay="100" aria-label="Supported signs grid">
           {% for item in dictionary_items %}
-          <div class="sc-dict-card" data-label="{{ item.label|lower }}">
+          <article class="sc-dict-card" data-label="{{ item.label|lower }}" aria-label="Sign word: {{ item.label }}">
             <span class="sc-dict-card-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
             </span>
             <span class="sc-dict-label">{{ item.label }}</span>
             <span class="sc-dict-card-hint">Sign word</span>
-          </div>
+          </article>
           {% endfor %}
         </section>
         <p id="dict-no-results" class="sc-page-subtitle sc-dict-empty" hidden>No supported signs match your search.</p>
