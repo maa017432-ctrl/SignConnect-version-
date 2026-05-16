@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import logging
-import secrets
 import re
+import secrets
 import sqlite3
-from hmac import compare_digest
-from urllib.parse import urlencode
+from typing import Any
 
-import requests
+from authlib.integrations.base_client.errors import OAuthError
+from authlib.integrations.flask_client import OAuth
 from flask import (
     Blueprint,
+    current_app,
     redirect,
     render_template,
     request,
@@ -22,7 +23,6 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from core.csrf import validate_csrf_token
 from database.db import get_connection
-from flask import current_app
 
 LOGGER = logging.getLogger(__name__)
 auth_bp = Blueprint("auth", __name__)
@@ -32,8 +32,7 @@ _PASSWORD_MIN_LENGTH = 8
 _PASSWORD_MAX_LENGTH = 128
 _NAME_MAX_LENGTH = 80
 _EMAIL_MAX_LENGTH = 254
-_GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
-_GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+_GOOGLE_METADATA_URL = "https://accounts.google.com/.well-known/openid-configuration"
 _GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 
 
@@ -109,6 +108,61 @@ def _google_client_config() -> tuple[str, str]:
     return client_id, client_secret
 
 
+def _google_oauth_client():
+    """Return a cached Authlib Google client, or ``None`` when not configured."""
+    client_id, client_secret = _google_client_config()
+    if not client_id or not client_secret:
+        return None
+
+    cache_key = (client_id, client_secret)
+    cached = current_app.extensions.get("google_oauth")
+    if cached and cached.get("config") == cache_key and cached.get("client") is not None:
+        return cached["client"]
+
+    local_oauth = OAuth(current_app)
+    client = local_oauth.register(
+        name="google",
+        client_id=client_id,
+        client_secret=client_secret,
+        server_metadata_url=_GOOGLE_METADATA_URL,
+        client_kwargs={"scope": "openid email profile"},
+    )
+    current_app.extensions["google_oauth"] = {
+        "config": cache_key,
+        "oauth": local_oauth,
+        "client": client,
+    }
+    return client
+
+
+def _render_signin_error(message: str | None):
+    return render_template("signin.html", error=message)
+
+
+def _signin_user(user_id: int, email: str, full_name: str | None = None) -> None:
+    """Reset the session and persist the authenticated user context."""
+    session.clear()
+    session["user_id"] = user_id
+    session["user_email"] = email
+    session["user_name"] = full_name or email.split("@")[0]
+    session.permanent = True
+
+
+def _fetch_google_userinfo(google_client, token: dict[str, Any], nonce: str) -> dict[str, Any]:
+    """Load Google userinfo from the ID token first, then the userinfo endpoint."""
+    userinfo: dict[str, Any] | None = None
+    id_token = str(token.get("id_token", "")).strip()
+    if id_token and nonce:
+        userinfo = google_client.parse_id_token(token, nonce=nonce)
+
+    if userinfo:
+        return userinfo
+
+    userinfo_response = google_client.get(_GOOGLE_USERINFO_URL)
+    userinfo_response.raise_for_status()
+    return dict(userinfo_response.json())
+
+
 # ── routes ────────────────────────────────────────────────────────────────────
 
 @auth_bp.get("/signin")
@@ -116,7 +170,7 @@ def signin_get() -> str:
     """Render sign-in page. Redirect to home if already logged in."""
     if session.get("user_id"):
         return redirect(url_for("main.index"))
-    return render_template("signin.html", error=None)
+    return _render_signin_error(None)
 
 
 @auth_bp.post("/signin")
@@ -127,52 +181,42 @@ def signin_post():
     password = str(request.form.get("password", ""))
 
     if not email or not password:
-        return render_template("signin.html", error="Email and password are required.")
+        return _render_signin_error("Email and password are required.")
     if not _is_valid_email(email):
-        return render_template("signin.html", error="Please enter a valid email address.")
+        return _render_signin_error("Please enter a valid email address.")
 
     db_path = current_app.config["DATABASE_PATH"]
     user = _get_user_by_email(db_path, email)
 
     if not user or not check_password_hash(user["password_hash"], password):
-        return render_template("signin.html", error="Invalid email or password.")
+        return _render_signin_error("Invalid email or password.")
     if bool(user.get("is_suspended")):
-        return render_template("signin.html", error="This account is suspended. Please contact the administrator.")
+        return _render_signin_error("This account is suspended. Please contact the administrator.")
 
-    session.clear()
-    session["user_id"] = user["id"]
-    session["user_email"] = user["email"]
-    session["user_name"] = user["full_name"] or user["email"].split("@")[0]
-    session.permanent = True
+    _signin_user(user["id"], user["email"], user["full_name"])
 
     LOGGER.info("User %s signed in", user["email"])
     return redirect(url_for("main.index"))
 
 
 @auth_bp.get("/signin/google")
+@auth_bp.get("/auth/google")
 def signin_google():
     """Start Google OAuth sign-in flow."""
     if session.get("user_id"):
         return redirect(url_for("main.index"))
 
-    client_id, _ = _google_client_config()
-    if not client_id:
-        return render_template("signin.html", error="Google sign-in is not configured yet.")
+    google_client = _google_oauth_client()
+    if google_client is None:
+        return _render_signin_error("Google sign-in is not configured yet.")
 
-    state = secrets.token_urlsafe(32)
-    session["google_oauth_state"] = state
+    session["google_oauth_nonce"] = secrets.token_urlsafe(32)
     redirect_uri = url_for("auth.google_callback", _external=True)
-    auth_query = urlencode(
-        {
-            "client_id": client_id,
-            "redirect_uri": redirect_uri,
-            "response_type": "code",
-            "scope": "openid email profile",
-            "state": state,
-            "prompt": "select_account",
-        }
+    return google_client.authorize_redirect(
+        redirect_uri=redirect_uri,
+        nonce=session["google_oauth_nonce"],
+        prompt="select_account",
     )
-    return redirect(f"{_GOOGLE_AUTH_URL}?{auth_query}")
 
 
 @auth_bp.get("/auth/google/callback")
@@ -183,63 +227,35 @@ def google_callback():
 
     oauth_error = _sanitize_text(request.args.get("error", ""), max_length=80)
     if oauth_error:
-        return render_template("signin.html", error="Google sign-in was cancelled or failed.")
+        return _render_signin_error("Google sign-in was cancelled or failed.")
 
-    received_state = _sanitize_text(request.args.get("state", ""), max_length=256)
-    expected_state = str(session.pop("google_oauth_state", ""))
-    if not expected_state or not received_state or not compare_digest(expected_state, received_state):
-        return render_template("signin.html", error="Invalid Google sign-in state. Please try again.")
+    google_client = _google_oauth_client()
+    if google_client is None:
+        return _render_signin_error("Google sign-in is not configured yet.")
 
-    code = _sanitize_text(request.args.get("code", ""), max_length=2048)
-    if not code:
-        return render_template("signin.html", error="Google sign-in did not return an authorization code.")
+    nonce = str(session.pop("google_oauth_nonce", "")).strip()
+    if not nonce:
+        return _render_signin_error("Google sign-in session expired. Please try again.")
 
-    client_id, client_secret = _google_client_config()
-    if not client_id or not client_secret:
-        return render_template("signin.html", error="Google sign-in is not configured yet.")
-
-    redirect_uri = url_for("auth.google_callback", _external=True)
     try:
-        token_response = requests.post(
-            _GOOGLE_TOKEN_URL,
-            data={
-                "code": code,
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "redirect_uri": redirect_uri,
-                "grant_type": "authorization_code",
-            },
-            timeout=10,
-        )
-        if token_response.status_code != 200:
-            LOGGER.warning("Google OAuth token exchange failed with status %s", token_response.status_code)
-            return render_template("signin.html", error="Unable to complete Google sign-in. Please try again.")
-        token_payload = token_response.json()
-        access_token = str(token_payload.get("access_token", "")).strip()
+        token_payload = google_client.authorize_access_token()
+        access_token = str((token_payload or {}).get("access_token", "")).strip()
         if not access_token:
-            return render_template("signin.html", error="Unable to complete Google sign-in. Please try again.")
-
-        userinfo_response = requests.get(
-            _GOOGLE_USERINFO_URL,
-            headers={"Authorization": f"Bearer {access_token}"},
-            timeout=10,
-        )
-        if userinfo_response.status_code != 200:
-            LOGGER.warning("Google OAuth userinfo failed with status %s", userinfo_response.status_code)
-            return render_template("signin.html", error="Unable to fetch your Google account details.")
-        userinfo = userinfo_response.json()
-    except requests.RequestException:
-        LOGGER.exception("Google OAuth network error")
-        return render_template("signin.html", error="Google sign-in failed due to a network error.")
-    except ValueError:
-        LOGGER.exception("Google OAuth response parsing error")
-        return render_template("signin.html", error="Google sign-in returned an unexpected response.")
+            LOGGER.warning("Google OAuth token exchange returned no access token")
+            return _render_signin_error("Unable to complete Google sign-in. Please try again.")
+        userinfo = _fetch_google_userinfo(google_client, token_payload, nonce)
+    except OAuthError as exc:
+        LOGGER.warning("Google OAuth failure: %s", exc)
+        return _render_signin_error("Unable to complete Google sign-in. Please try again.")
+    except Exception:
+        LOGGER.exception("Google OAuth callback failed")
+        return _render_signin_error("Google sign-in failed unexpectedly. Please try again.")
 
     email = _sanitize_text(str(userinfo.get("email", "")), max_length=_EMAIL_MAX_LENGTH).lower()
     if not email or not _is_valid_email(email):
-        return render_template("signin.html", error="Google account email is missing or invalid.")
+        return _render_signin_error("Google account email is missing or invalid.")
     if userinfo.get("email_verified") is False:
-        return render_template("signin.html", error="Your Google email must be verified to sign in.")
+        return _render_signin_error("Your Google email must be verified to sign in.")
 
     full_name = _sanitize_text(str(userinfo.get("name", "")), max_length=_NAME_MAX_LENGTH)
     if not full_name:
@@ -249,7 +265,7 @@ def google_callback():
     db_path = current_app.config["DATABASE_PATH"]
     user = _get_user_by_email(db_path, email)
     if user and bool(user.get("is_suspended")):
-        return render_template("signin.html", error="This account is suspended. Please contact the administrator.")
+        return _render_signin_error("This account is suspended. Please contact the administrator.")
     if not user:
         try:
             generated_password = secrets.token_urlsafe(32)
@@ -263,16 +279,12 @@ def google_callback():
         except sqlite3.IntegrityError:
             user = _get_user_by_email(db_path, email)
             if not user:
-                return render_template("signin.html", error="Unable to create your account. Please try again.")
+                return _render_signin_error("Unable to create your account. Please try again.")
         except Exception:
             LOGGER.exception("Failed to create Google OAuth user")
-            return render_template("signin.html", error="Unable to create your account. Please try again.")
+            return _render_signin_error("Unable to create your account. Please try again.")
 
-    session.clear()
-    session["user_id"] = user["id"]
-    session["user_email"] = user["email"]
-    session["user_name"] = user.get("full_name") or user["email"].split("@")[0]
-    session.permanent = True
+    _signin_user(user["id"], user["email"], user.get("full_name"))
 
     LOGGER.info("User %s signed in with Google OAuth", user["email"])
     return redirect(url_for("main.index"))
@@ -318,11 +330,7 @@ def signup_post():
         LOGGER.exception("Failed to create user account")
         return render_template("signup.html", error="Account creation failed. Please try again.")
 
-    session.clear()
-    session["user_id"] = user_id
-    session["user_email"] = email.lower()
-    session["user_name"] = full_name or email.split("@")[0]
-    session.permanent = True
+    _signin_user(user_id, email.lower(), full_name)
 
     LOGGER.info("New user registered: %s", email)
     return redirect(url_for("main.index"))
