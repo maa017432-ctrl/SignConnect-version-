@@ -235,7 +235,7 @@ def test_signin_google_requires_configuration(client) -> None:
     assert b"Google sign-in is not configured yet" in response.data
 
 
-def test_signin_google_redirects_to_google_when_configured(client) -> None:
+def test_signin_google_redirects_to_google_when_configured(client, monkeypatch) -> None:
     """Configured Google sign-in should redirect to Google's OAuth endpoint."""
     import routes.auth as auth_routes
 
@@ -247,7 +247,6 @@ def test_signin_google_redirects_to_google_when_configured(client) -> None:
             from flask import redirect
             return redirect("https://accounts.google.com/mock-auth")
 
-    monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(auth_routes, "_google_oauth_client", lambda: _FakeGoogleClient())
 
     response = client.get("/auth/google", follow_redirects=False)
@@ -259,8 +258,6 @@ def test_signin_google_redirects_to_google_when_configured(client) -> None:
 
     with client.session_transaction() as sess:
         assert sess.get("google_oauth_nonce") == captured["nonce"]
-
-    monkeypatch.undo()
 
 
 def test_google_callback_handles_provider_error(client) -> None:

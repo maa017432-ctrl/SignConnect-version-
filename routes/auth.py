@@ -113,14 +113,25 @@ def _google_oauth_client():
     if not client_id or not client_secret:
         return None
 
+    cache_key = (client_id, client_secret)
+    cached = current_app.extensions.get("google_oauth")
+    if cached and cached.get("config") == cache_key and cached.get("client") is not None:
+        return cached["client"]
+
     local_oauth = OAuth(current_app)
-    return local_oauth.register(
+    client = local_oauth.register(
         name="google",
         client_id=client_id,
         client_secret=client_secret,
         server_metadata_url=_GOOGLE_METADATA_URL,
         client_kwargs={"scope": "openid email profile"},
     )
+    current_app.extensions["google_oauth"] = {
+        "config": cache_key,
+        "oauth": local_oauth,
+        "client": client,
+    }
+    return client
 
 
 def _render_signin_error(message: str | None):
