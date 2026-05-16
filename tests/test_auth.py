@@ -296,8 +296,10 @@ def test_google_callback_signs_in_existing_user(client, monkeypatch) -> None:
             return {"access_token": "access-token", "id_token": "id-token"}
 
         def parse_id_token(self, token, nonce):
-            assert token["id_token"] == "id-token"
-            assert nonce == "nonce-123"
+            if token["id_token"] != "id-token":
+                raise AssertionError("expected ID token to be forwarded to parse_id_token")
+            if nonce != "nonce-123":
+                raise AssertionError("expected stored nonce to be forwarded to parse_id_token")
             return {
                 "email": email,
                 "email_verified": True,
@@ -336,7 +338,8 @@ def test_google_callback_creates_new_user_when_missing(client, monkeypatch) -> N
             return {"access_token": "access-token", "id_token": "id-token"}
 
         def parse_id_token(self, token, nonce):
-            assert nonce == "nonce-456"
+            if nonce != "nonce-456":
+                raise AssertionError("expected stored nonce to be forwarded to parse_id_token")
             return {
                 "email": email,
                 "email_verified": True,

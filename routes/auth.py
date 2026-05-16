@@ -109,6 +109,7 @@ def _google_client_config() -> tuple[str, str]:
 
 
 def _google_oauth_client():
+    """Return a cached Authlib Google client, or ``None`` when not configured."""
     client_id, client_secret = _google_client_config()
     if not client_id or not client_secret:
         return None
@@ -139,6 +140,7 @@ def _render_signin_error(message: str | None):
 
 
 def _signin_user(user_id: int, email: str, full_name: str | None = None) -> None:
+    """Reset the session and persist the authenticated user context."""
     session.clear()
     session["user_id"] = user_id
     session["user_email"] = email
@@ -147,6 +149,7 @@ def _signin_user(user_id: int, email: str, full_name: str | None = None) -> None
 
 
 def _fetch_google_userinfo(google_client, token: dict[str, Any], nonce: str) -> dict[str, Any]:
+    """Load Google userinfo from the ID token first, then the userinfo endpoint."""
     userinfo: dict[str, Any] | None = None
     id_token = str(token.get("id_token", "")).strip()
     if id_token and nonce:
@@ -236,7 +239,8 @@ def google_callback():
 
     try:
         token_payload = google_client.authorize_access_token()
-        if not token_payload or not str(token_payload.get("access_token", "")).strip():
+        access_token = str((token_payload or {}).get("access_token", "")).strip()
+        if not access_token:
             LOGGER.warning("Google OAuth token exchange returned no access token")
             return _render_signin_error("Unable to complete Google sign-in. Please try again.")
         userinfo = _fetch_google_userinfo(google_client, token_payload, nonce)
