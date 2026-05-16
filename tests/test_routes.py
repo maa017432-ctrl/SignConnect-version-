@@ -71,7 +71,8 @@ def test_dictionary_page_renders_searchable_supported_signs(client) -> None:
     assert 'id="dict-search"' in body
     assert "Showing " in body
     assert 'static/js/dictionary.js' in body
-    assert "Landmark preview not available yet" in body
+    assert "Browse and search" in body
+    assert "Landmark preview not available yet" not in body
 
 
 def test_dictionary_uses_config_fallback_when_label_map_is_empty(client) -> None:

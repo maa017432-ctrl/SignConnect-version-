@@ -218,6 +218,102 @@ def test_signin_sets_session_on_success(client) -> None:
         assert sess.get("user_email") == email
 
 
+def test_signin_page_renders_google_button(client) -> None:
+    """Sign-in page should expose a Google sign-in action."""
+    response = client.get("/signin")
+    body = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert "Continue with Google" in body
+    assert '/signin/google' in body
+
+
+def test_signin_google_requires_configuration(client) -> None:
+    """Google sign-in route should return a friendly error when not configured."""
+    response = client.get("/signin/google", follow_redirects=False)
+    assert response.status_code == 200
+    assert b"Google sign-in is not configured yet" in response.data
+
+
+def test_signin_google_redirects_to_google_when_configured(client) -> None:
+    """Configured Google sign-in should redirect to Google's OAuth endpoint."""
+    app = client.application
+    app.config["GOOGLE_CLIENT_ID"] = "test-client-id"
+    app.config["GOOGLE_CLIENT_SECRET"] = "test-client-secret"
+
+    response = client.get("/signin/google", follow_redirects=False)
+    assert response.status_code == 302
+    location = response.headers["Location"]
+    assert location.startswith("https://accounts.google.com/o/oauth2/v2/auth?")
+    assert "client_id=test-client-id" in location
+    assert "response_type=code" in location
+    assert "scope=openid+email+profile" in location
+
+    with client.session_transaction() as sess:
+        assert sess.get("google_oauth_state")
+
+
+def test_google_callback_rejects_invalid_state(client) -> None:
+    """Google callback should reject requests with mismatched state."""
+    app = client.application
+    app.config["GOOGLE_CLIENT_ID"] = "test-client-id"
+    app.config["GOOGLE_CLIENT_SECRET"] = "test-client-secret"
+    with client.session_transaction() as sess:
+        sess["google_oauth_state"] = "expected-state"
+
+    response = client.get(
+        "/auth/google/callback?state=other-state&code=dummy-code",
+        follow_redirects=False,
+    )
+    assert response.status_code == 200
+    assert b"Invalid Google sign-in state" in response.data
+
+
+def test_google_callback_signs_in_existing_user(client, monkeypatch) -> None:
+    """Google callback should sign in an existing matching user account."""
+    app = client.application
+    app.config["GOOGLE_CLIENT_ID"] = "test-client-id"
+    app.config["GOOGLE_CLIENT_SECRET"] = "test-client-secret"
+    email = "google-existing@example.com"
+    _register_user(client, email, "StrongPass1")
+    with client.session_transaction() as sess:
+        sess["google_oauth_state"] = "state-123"
+
+    class _FakeResponse:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    def _fake_post(*args, **kwargs):
+        return _FakeResponse(200, {"access_token": "access-token"})
+
+    def _fake_get(*args, **kwargs):
+        return _FakeResponse(
+            200,
+            {
+                "email": email,
+                "email_verified": True,
+                "name": "Google Existing",
+            },
+        )
+
+    import routes.auth as auth_routes
+    monkeypatch.setattr(auth_routes.requests, "post", _fake_post)
+    monkeypatch.setattr(auth_routes.requests, "get", _fake_get)
+
+    response = client.get(
+        "/auth/google/callback?state=state-123&code=auth-code",
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/")
+    with client.session_transaction() as sess:
+        assert sess.get("user_email") == email
+        assert sess.get("user_id") is not None
+
+
 
 
 def test_signin_rejects_suspended_account(client) -> None:
