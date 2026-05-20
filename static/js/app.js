@@ -781,6 +781,11 @@
       } else {
         settingsState = { ...DEFAULTS };
       }
+      // sc_theme is the single source of truth for theme
+      const scTheme = localStorage.getItem("sc_theme");
+      if (scTheme && (scTheme === "dark" || scTheme === "light")) {
+        settingsState.theme = scTheme;
+      }
       applySettings();
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -1055,6 +1060,7 @@
     const nextTheme = theme || "dark";
     document.documentElement.setAttribute("data-theme", nextTheme);
     document.body.setAttribute("data-theme", nextTheme);
+    try { localStorage.setItem("sc_theme", nextTheme); } catch (e) {}
     window.dispatchEvent(new CustomEvent("themeChanged", { detail: { theme: nextTheme } }));
   }
 
@@ -1621,15 +1627,18 @@
       const text = String(payload.translation_text || "").trim();
       const topGesture = String(payload.top_gesture || "");
       const avg = Number(payload.average_confidence || 0);
+      const totalFrames = payload.frames_total || 0;
+      const sampledFrames = payload.frames_sampled || 0;
+      const processedFrames = payload.frames_processed || 0;
 
       if (recognizedText) recognizedText.textContent = topGesture || "—";
       updateConfidence(avg);
       updateSentenceDisplay(text);
-      updateProgressBar(0, 15, false);
+      if (processedFrames > 0) updateProgressBar(processedFrames, sampledFrames, false);
 
       const summary = text
-        ? `Video processed (${payload.frames_processed || 0} frames). Translation: ${text}`
-        : `Video processed (${payload.frames_processed || 0} frames). No strong gesture detected.`;
+        ? `✅ Detected: "${text}" (${processedFrames}/${totalFrames} frames with hands, ${Math.round(avg * 100)}% confidence)`
+        : `Video analyzed (${totalFrames} frames, ${processedFrames} with hands detected). No strong gesture found.`;
       setUploadStatus(summary, false);
       showOverlay("Upload complete — press Resume to return to live camera");
       if (uploadVideoBtn) uploadVideoBtn.disabled = false;

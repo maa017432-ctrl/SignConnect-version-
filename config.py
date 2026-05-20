@@ -32,7 +32,8 @@ class Config:
         self.DEBUG = os.getenv("DEBUG", "false").lower() == "true"
         self.SESSION_COOKIE_HTTPONLY = True
         self.SESSION_COOKIE_SAMESITE = "Lax"
-        self.SESSION_COOKIE_SECURE = not self.DEBUG
+        self.SESSION_COOKIE_SECURE = False
+        self.PERMANENT_SESSION_LIFETIME = 300
 
         # ── Security: crash hard if running in production with the default key ──
         if not self.DEBUG and self.SECRET_KEY == _DEFAULT_SECRET:

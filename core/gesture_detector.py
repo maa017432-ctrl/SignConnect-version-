@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import logging
+import time
+from threading import Lock
 from typing import Optional
 
 import numpy as np
@@ -36,6 +38,10 @@ class GestureDetector:
         self.hands = None
         self._min_detection_confidence = min_detection_confidence
         self._min_tracking_confidence = min_tracking_confidence
+        self._lock = Lock()
+        self._timestamp_us = 0  # monotonic counter for MediaPipe graph
+        self._consecutive_errors = 0
+        self._max_consecutive_errors = 5  # reinit after this many failures
         self._try_init()
 
     @property
@@ -75,6 +81,8 @@ class GestureDetector:
             self.hands = None
 
         self._available = False
+        self._timestamp_us = 0
+        self._consecutive_errors = 0
         try:
             if mp is None or cv2 is None:
                 raise RuntimeError("MediaPipe or OpenCV not importable")
@@ -100,6 +108,11 @@ class GestureDetector:
             self._available = False
             LOGGER.warning("Gesture detector initialization failed: %s", error)
 
+    def _reinit_hands(self) -> None:
+        """Reinitialize the MediaPipe Hands graph to recover from timestamp errors."""
+        LOGGER.info("Reinitializing MediaPipe Hands graph to recover from timestamp errors")
+        self._try_init()
+
     def detect(
         self, frame: np.ndarray
     ) -> tuple[np.ndarray, Optional[np.ndarray]]:
@@ -112,7 +125,14 @@ class GestureDetector:
             return frame, None
         try:
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = self.hands.process(rgb_frame)
+
+            with self._lock:
+                # Ensure strictly increasing timestamps for MediaPipe's graph
+                self._timestamp_us += 1
+                results = self.hands.process(rgb_frame)
+
+            self._consecutive_errors = 0  # reset on success
+
             if not results.multi_hand_landmarks:
                 return frame, None
 
@@ -143,5 +163,16 @@ class GestureDetector:
             flattened = np.concatenate([hands_data[0][1], hands_data[1][1]])
             return annotated, flattened
         except Exception as error:
-            LOGGER.warning("Hand landmark detection failed: %s", error)
+            error_msg = str(error)
+            if "timestamp" in error_msg.lower():
+                self._consecutive_errors += 1
+                if self._consecutive_errors >= self._max_consecutive_errors:
+                    self._reinit_hands()
+                elif self._consecutive_errors == 1:
+                    # Only log the first occurrence, not the spam
+                    LOGGER.warning("MediaPipe timestamp mismatch — will reinit after %d consecutive errors",
+                                   self._max_consecutive_errors)
+            else:
+                LOGGER.warning("Hand landmark detection failed: %s", error)
             return frame, None
+

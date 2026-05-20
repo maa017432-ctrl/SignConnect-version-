@@ -499,13 +499,47 @@ def upload_video() -> tuple[dict[str, object], int]:
         gesture_detector = current_app.extensions["gesture_detector"]
         classifier = current_app.extensions["classifier"]
         translator = current_app.extensions["translator"]
+
+        # ── Count total frames to size thresholds adaptively ──
+        total_frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        video_fps = capture.get(cv2.CAP_PROP_FPS) or 30.0
+        LOGGER.info(
+            "Video upload: %d total frames, %.1f FPS, %.1fs duration",
+            total_frame_count, video_fps,
+            total_frame_count / video_fps if video_fps else 0,
+        )
+
+        # Process every frame for short videos; stride only for long ones
+        configured_stride = current_app.config.get("VIDEO_UPLOAD_FRAME_STRIDE")
+        if configured_stride is not None:
+            frame_stride = max(1, int(configured_stride))
+        elif total_frame_count > 300:
+            frame_stride = 2
+        else:
+            frame_stride = 1  # process every frame for short videos
+
+        estimated_samples = max(1, total_frame_count // frame_stride) if total_frame_count else 100
+
+        # Adaptive thresholds: more lenient for shorter videos
+        smoother_window = max(3, min(10, estimated_samples // 5))
+        smoother_min_fraction = 0.4 if estimated_samples < 60 else 0.6
+        stable_frames = max(3, min(15, estimated_samples // 8))
+        cooldown_frames = max(3, min(20, estimated_samples // 10))
+
+        LOGGER.info(
+            "Video processing config: stride=%d, smoother_window=%d, "
+            "min_fraction=%.2f, stable_frames=%d, cooldown=%d",
+            frame_stride, smoother_window, smoother_min_fraction,
+            stable_frames, cooldown_frames,
+        )
+
         smoother = PredictionSmoother(
-            window=current_app.config.get("SMOOTHER_WINDOW", 10),
-            min_fraction=current_app.config.get("SMOOTHER_MIN_FRACTION", 0.6),
+            window=smoother_window,
+            min_fraction=smoother_min_fraction,
         )
         sentence_builder = SentenceBuilder(
-            stable_frames=current_app.config.get("SENTENCE_STABLE_FRAMES", 15),
-            cooldown_frames=current_app.config.get("SENTENCE_COOLDOWN_FRAMES", 20),
+            stable_frames=stable_frames,
+            cooldown_frames=cooldown_frames,
         )
 
         if hasattr(classifier, "reset_sequence"):
@@ -514,9 +548,8 @@ def upload_video() -> tuple[dict[str, object], int]:
         frame_index = 0
         processed_frames = 0
         sampled_frames = 0
-        configured_stride = current_app.config.get("VIDEO_UPLOAD_FRAME_STRIDE")
-        frame_stride = max(1, int(2 if configured_stride is None else configured_stride))
         label_counter: Counter[str] = Counter()
+        raw_label_counter: Counter[str] = Counter()
         confidence_sum = 0.0
         confidence_count = 0
 
@@ -543,23 +576,42 @@ def upload_video() -> tuple[dict[str, object], int]:
             confidence = float(details.get("confidence", 0.0))
             label_index = int(details.get("label_index", -1))
             raw_label = translator.get_label(label_index) if label_index >= 0 else None
+
+            # Track raw predictions as fallback
+            if raw_label and confidence > 0.5:
+                raw_label_counter[raw_label] += 1
+                confidence_sum += confidence
+                confidence_count += 1
+
             smoothed_label, _ = smoother.update(raw_label, confidence)
             sentence_builder.update(smoothed_label)
 
             if smoothed_label:
                 label_counter[smoothed_label] += 1
-                confidence_sum += confidence
-                confidence_count += 1
 
         if hasattr(classifier, "reset_sequence"):
             classifier.reset_sequence()
 
         translation_text = sentence_builder.sentence.strip()
         top_gesture = label_counter.most_common(1)[0][0] if label_counter else ""
+
+        # Fallback: if smoother was too strict, use raw majority vote
+        if not top_gesture and raw_label_counter:
+            top_gesture = raw_label_counter.most_common(1)[0][0]
+            LOGGER.info("Using raw majority vote fallback: %s", top_gesture)
+
         if not translation_text and top_gesture:
             translation_text = top_gesture
 
         average_confidence = (confidence_sum / confidence_count) if confidence_count else 0.0
+
+        LOGGER.info(
+            "Video result: %d total, %d sampled, %d processed, "
+            "top_gesture=%r, sentence=%r, avg_conf=%.2f",
+            frame_index, sampled_frames, processed_frames,
+            top_gesture, translation_text, average_confidence,
+        )
+
         return (
             jsonify(
                 {

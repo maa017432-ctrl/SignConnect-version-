@@ -9,7 +9,7 @@
     <div class="sc-page-header">
       <div>
         <h1 class="sc-page-title">
-          <svg class="sc-page-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M2 12a10 10 0 0 0 2.93 7.07"/><path d="M6.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+          <svg class="sc-page-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           Settings
         </h1>
         <p class="sc-page-subtitle">Manage your preferences and application configuration</p>
@@ -61,26 +61,36 @@
             <p class="stg-section-desc">Your public identity within SignConnect.</p>
           </div>
           <div class="sc-widget">
+            {% if current_user and current_user.is_authenticated %}
             <div class="stg-avatar-row">
               <div class="stg-avatar" id="stg-avatar-display">
-                {% if current_user and current_user.name %}{{ current_user.name[0]|upper }}{% else %}?{% endif %}
+                {{ current_user.name[0]|upper }}
               </div>
               <div>
-                <p class="stg-avatar-name">{{ current_user.name if current_user and current_user.name else 'Guest User' }}</p>
-                <p class="stg-avatar-email">{{ current_user.email if current_user and current_user.email else 'Not signed in' }}</p>
+                <p class="stg-avatar-name">{{ current_user.name }}</p>
+                <p class="stg-avatar-email">{{ current_user.email }}</p>
               </div>
             </div>
             <div class="stg-form">
               <div class="stg-field">
                 <label for="stg-name">Display Name</label>
-                <input id="stg-name" class="stg-input" type="text" value="{{ current_user.name if current_user and current_user.name else '' }}" placeholder="Your name">
+                <input id="stg-name" class="stg-input" type="text" value="{{ current_user.name }}" placeholder="Your name">
               </div>
               <div class="stg-field">
                 <label for="stg-email">Email Address</label>
-                <input id="stg-email" class="stg-input" type="email" value="{{ current_user.email if current_user and current_user.email else '' }}" placeholder="you@example.com">
+                <input id="stg-email" class="stg-input" type="email" value="{{ current_user.email }}" placeholder="you@example.com">
               </div>
               <button class="sc-btn sc-btn--primary" id="save-profile-btn">Save Profile</button>
             </div>
+            {% else %}
+            <div class="stg-guest-notice">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div>
+                <p>Sign in to manage your profile and sync settings.</p>
+                <a href="{{ url_for('auth.signin_get') }}" class="sc-btn sc-btn--primary" style="margin-top:12px">Sign In</a>
+              </div>
+            </div>
+            {% endif %}
           </div>
         </section>
 

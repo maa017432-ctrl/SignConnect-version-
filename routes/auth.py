@@ -153,7 +153,11 @@ def _fetch_google_userinfo(google_client, token: dict[str, Any], nonce: str) -> 
     userinfo: dict[str, Any] | None = None
     id_token = str(token.get("id_token", "")).strip()
     if id_token and nonce:
-        userinfo = google_client.parse_id_token(token, nonce=nonce)
+        try:
+            userinfo = google_client.parse_id_token(token, nonce=nonce)
+        except Exception:
+            LOGGER.debug("parse_id_token failed, falling back to userinfo endpoint", exc_info=True)
+            userinfo = None
 
     if userinfo:
         return userinfo
@@ -210,8 +214,9 @@ def signin_google():
     if google_client is None:
         return _render_signin_error("Google sign-in is not configured yet.")
 
+    session.permanent = True
     session["google_oauth_nonce"] = secrets.token_urlsafe(32)
-    redirect_uri = url_for("auth.google_callback", _external=True)
+    redirect_uri = f"http://{request.host}/auth/google/callback"
     return google_client.authorize_redirect(
         redirect_uri=redirect_uri,
         nonce=session["google_oauth_nonce"],
@@ -237,11 +242,14 @@ def google_callback():
     if not nonce:
         return _render_signin_error("Google sign-in session expired. Please try again.")
 
+    # The redirect_uri must match exactly what was sent in the authorize step
+    callback_uri = f"http://{request.host}/auth/google/callback"
+
     try:
         token_payload = google_client.authorize_access_token()
         access_token = str((token_payload or {}).get("access_token", "")).strip()
         if not access_token:
-            LOGGER.warning("Google OAuth token exchange returned no access token")
+            LOGGER.warning("Google OAuth token exchange returned no access token.")
             return _render_signin_error("Unable to complete Google sign-in. Please try again.")
         userinfo = _fetch_google_userinfo(google_client, token_payload, nonce)
     except OAuthError as exc:

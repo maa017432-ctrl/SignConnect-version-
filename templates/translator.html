@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Translator{% endblock %}
-{% block meta_description %}Live sign language translator — camera feed, gesture recognition, and speech synthesis.{% endblock %}
+{% block meta_description %}Live sign language translator — camera feed, gesture recognition, and speech synthesis.{%
+endblock %}
 
 {% block content %}
 <div class="sc-page sc-page--translator">
@@ -10,7 +11,10 @@
     <div class="sc-page-header sc-reveal">
       <div>
         <h1 class="sc-page-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-page-title-icon"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-page-title-icon">
+            <polygon points="23 7 16 12 23 17 23 7" />
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+          </svg>
           Live Translator
           <span class="sc-live-badge" id="sc-live-badge" style="display:none">
             <span class="sc-live-dot"></span> LIVE
@@ -22,8 +26,14 @@
     {% if demo_mode %}
     <!-- Demo Mode Warning Banner -->
     <div class="sc-demo-banner" role="alert">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <strong>Demo Mode:</strong> The gesture model failed to load — predictions are simulated. Camera and MediaPipe are still active.
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        style="width:16px;height:16px;flex-shrink:0">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+      <strong>Demo Mode:</strong> The gesture model failed to load — predictions are simulated. Camera and MediaPipe are
+      still active.
     </div>
     {% endif %}
 
@@ -36,20 +46,30 @@
         <!-- Camera Feed -->
         <div class="sc-camera-wrap">
           <div class="sc-camera-overlay-bar">
-            <div class="sc-camera-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-chip-icon"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg> <span id="model-status">Model: loading</span></div>
+            <div class="sc-camera-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                class="sc-chip-icon">
+                <rect x="4" y="4" width="16" height="16" rx="2" />
+                <rect x="9" y="9" width="6" height="6" />
+              </svg> <span id="model-status">Model: loading</span></div>
             <div class="sc-camera-chip">FPS: <span id="fps-display">--</span></div>
           </div>
 
           <div class="video-wrapper">
             <img id="video-stream" src="" alt="Live sign language feed" width="640" height="480" decoding="async"
-              data-mjpeg-url="{{ url_for('stream.video_feed') }}" data-frame-url="{{ url_for('api.api_camera_frame') }}">
+              data-mjpeg-url="{{ url_for('stream.video_feed') }}"
+              data-frame-url="{{ url_for('api.api_camera_frame') }}">
             <div id="prediction-overlay" class="sc-prediction-overlay sc-prediction-overlay--hidden" aria-live="polite">
               <span id="prediction-overlay-label" class="sc-prediction-overlay-label">—</span>
               <span id="prediction-overlay-confidence" class="sc-prediction-overlay-confidence">0.00%</span>
             </div>
             <div id="video-overlay" class="video-overlay">
               <div class="sc-camera-off-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16.5 9.4l-2-1.74"/><path d="M2 2l20 20"/><path d="M21.43 15.97V8a2 2 0 0 0-2-2h-2.09"/><path d="M10.91 6H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M16.5 9.4l-2-1.74" />
+                  <path d="M2 2l20 20" />
+                  <path d="M21.43 15.97V8a2 2 0 0 0-2-2h-2.09" />
+                  <path d="M10.91 6H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14" />
+                </svg>
               </div>
               <span class="overlay-msg" data-i18n="translator.connecting">Connecting to camera…</span>
               <div class="spinner"></div>
@@ -63,25 +83,26 @@
         <div class="sc-control-bar sc-reveal" data-delay="100">
           <div class="sc-control-info">
             <div class="sc-control-stat">
-              <p class="sc-control-label">DETECTED GESTURE</p>
+              <p class="sc-control-label">DETECTED SIGN</p>
               <div class="sc-control-value">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-ctrl-icon"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-ctrl-icon">
+                  <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" />
+                  <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" />
+                  <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" />
+                  <path
+                    d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+                </svg>
                 <span id="recognized-text">—</span>
               </div>
             </div>
             <div class="sc-control-divider"></div>
             <div class="sc-control-stat">
               <div class="sc-control-label sc-control-label--with-tooltip">
-                <span>CONFIDENCE</span>
-                <span class="sc-tooltip-anchor">
-                  <button type="button" class="sc-tooltip-trigger" aria-label="Explain confidence score">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 10v5"></path><path d="M12 7h.01"></path></svg>
-                  </button>
-                  <span class="sc-tooltip-panel" role="tooltip">Confidence represents how certain the AI model is about the detected gesture prediction after temporal smoothing and landmark analysis. High confidence usually means the hand pose is stable and clearly matches a learned gesture, while lower confidence can appear when movement is fast, the hand is partially out of frame, or the gesture is still stabilizing.</span>
-                </span>
               </div>
               <div class="sc-confidence-inline">
-                <div class="sc-conf-bar"><div class="sc-conf-fill" id="confidence-bar-fill" style="transition:width 0.3s ease"></div></div>
+                <div class="sc-conf-bar">
+                  <div class="sc-conf-fill" id="confidence-bar-fill" style="transition:width 0.3s ease"></div>
+                </div>
                 <span class="sc-conf-pct" id="confidence-value">0%</span>
               </div>
             </div>
@@ -89,13 +110,21 @@
           <div class="sc-control-buttons">
             <button id="pause-btn" class="sc-btn sc-btn--sm" type="button" disabled>
               <span class="sc-btn__icon-wrap" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="currentColor" class="sc-btn-icon" style="width:14px;height:14px"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor" class="sc-btn-icon" style="width:14px;height:14px">
+                  <rect x="6" y="4" width="4" height="16" />
+                  <rect x="14" y="4" width="4" height="16" />
+                </svg>
               </span>
               <span class="sc-btn__label">Pause</span>
             </button>
             <button id="upload-video-btn" class="sc-btn sc-btn--sm" type="button">
               <span class="sc-btn__icon-wrap" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-btn-icon" style="width:14px;height:14px"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-btn-icon"
+                  style="width:14px;height:14px">
+                  <path d="M12 16V4" />
+                  <path d="m7 9 5-5 5 5" />
+                  <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+                </svg>
               </span>
               <span class="sc-btn__label">Upload Video</span>
             </button>
@@ -106,7 +135,11 @@
           <div id="coaching-container" class="coaching-container hidden" aria-live="polite">
             <div id="coaching-message" class="coaching-message info">
               <span id="coaching-icon" class="coaching-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 10v5"></path><path d="M12 7h.01"></path></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="9"></circle>
+                  <path d="M12 10v5"></path>
+                  <path d="M12 7h.01"></path>
+                </svg>
               </span>
               <span id="coaching-text" class="coaching-text">Center your hand</span>
             </div>
@@ -114,7 +147,9 @@
           <!-- Hidden start-btn kept for JS compatibility -->
           <div style="display:none">
             <button id="start-btn" class="sc-btn sc-btn--primary sc-btn--translate" type="button">
-              <svg viewBox="0 0 24 24" fill="currentColor" class="sc-btn-icon"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <svg viewBox="0 0 24 24" fill="currentColor" class="sc-btn-icon">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
               <span>Start Translating</span>
             </button>
           </div>
@@ -127,32 +162,54 @@
         <!-- Sentence Output Widget -->
         <div class="sc-widget sc-reveal" data-delay="100">
           <div class="sc-widget-header">
-            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-widget-icon"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Generated Sentence</h3>
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-widget-icon">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg> Generated Sentence</h3>
           </div>
           <div class="sc-widget-body">
             <div id="sentence-display" class="sc-sentence-display">…</div>
             <div class="sc-sentence-actions">
-              <button id="auto-speak-btn" type="button" class="sc-btn sc-btn--sm sc-action-btn" title="Toggle auto-speak: speaks each new word automatically" aria-pressed="false">
+              <button id="auto-speak-btn" type="button" class="sc-btn sc-btn--sm sc-action-btn"
+                title="Toggle auto-speak: speaks each new word automatically" aria-pressed="false">
                 <span class="sc-btn__icon-wrap" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 9 4-4v14l-4-4H2V9h3Z"></path><path d="M13 7h.01"></path><path d="M15 4h.01"></path><path d="M15 10h.01"></path><path d="M19 7h.01"></path></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m5 9 4-4v14l-4-4H2V9h3Z"></path>
+                    <path d="M13 7h.01"></path>
+                    <path d="M15 4h.01"></path>
+                    <path d="M15 10h.01"></path>
+                    <path d="M19 7h.01"></path>
+                  </svg>
                 </span>
                 <span class="sc-btn__label">Auto</span>
               </button>
               <button id="speak-btn" type="button" class="sc-btn sc-btn--sm sc-action-btn">
                 <span class="sc-btn__icon-wrap" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m11 5-5 4H3v6h3l5 4V5Z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m11 5-5 4H3v6h3l5 4V5Z"></path>
+                    <path d="M15.5 8.5a5 5 0 0 1 0 7"></path>
+                    <path d="M18.5 5.5a9 9 0 0 1 0 13"></path>
+                  </svg>
                 </span>
                 <span class="sc-btn__label">Speak</span>
               </button>
               <button id="copy-btn" type="button" class="sc-btn sc-btn--sm sc-action-btn">
                 <span class="sc-btn__icon-wrap" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
                 </span>
                 <span class="sc-btn__label">Copy</span>
               </button>
               <button id="clear-btn" type="button" class="sc-btn sc-btn--sm sc-btn--danger sc-action-btn">
                 <span class="sc-btn__icon-wrap" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18"></path>
+                    <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path>
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                    <path d="M10 11v6"></path>
+                    <path d="M14 11v6"></path>
+                  </svg>
                 </span>
                 <span class="sc-btn__label">Clear</span>
               </button>
@@ -163,27 +220,43 @@
         <!-- Session Stats Widget -->
         <div class="sc-widget sc-reveal" data-delay="200">
           <div class="sc-widget-header">
-            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-widget-icon"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Session Stats</h3>
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sc-widget-icon">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+              </svg> Session Stats</h3>
           </div>
           <div class="sc-widget-body">
             <div class="sc-stats-mini-grid">
               <div class="sc-stat-mini">
                 <span class="sc-stat-mini-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"></path><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"></path><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"></path>
+                    <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"></path>
+                    <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"></path>
+                    <path
+                      d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15">
+                    </path>
+                  </svg>
                 </span>
                 <span class="sc-stat-mini-val" id="stat-count">0</span><span class="sc-stat-mini-lbl">Gestures</span>
               </div>
               <div class="sc-stat-mini">
                 <span class="sc-stat-mini-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h6l3-8 4 16 2-8h3"></path></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 12h6l3-8 4 16 2-8h3"></path>
+                  </svg>
                 </span>
-                <span class="sc-stat-mini-val" id="stat-avg-conf">0%</span><span class="sc-stat-mini-lbl">Avg Conf.</span>
+                <span class="sc-stat-mini-val" id="stat-avg-conf">0%</span><span class="sc-stat-mini-lbl">Avg
+                  Conf.</span>
               </div>
               <div class="sc-stat-mini">
                 <span class="sc-stat-mini-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="9"></circle>
+                    <path d="M12 7v5l3 3"></path>
+                  </svg>
                 </span>
-                <span class="sc-stat-mini-val" id="stat-duration">0s</span><span class="sc-stat-mini-lbl">Duration</span>
+                <span class="sc-stat-mini-val" id="stat-duration">0s</span><span
+                  class="sc-stat-mini-lbl">Duration</span>
               </div>
             </div>
           </div>
@@ -200,7 +273,8 @@
               <span class="sc-select sc-select--static">English ↔ US ASL</span>
             </div>
             <div class="sc-setting-row">
-              <label for="threshold-slider">Confidence <span id="threshold-val" style="float:right;color:var(--text-muted);font-size:12px">75%</span></label>
+              <label for="threshold-slider">Confidence <span id="threshold-val"
+                  style="float:right;color:var(--text-muted);font-size:12px">75%</span></label>
               <input id="threshold-slider" type="range" min="10" max="99" value="75" step="1" class="sc-range">
             </div>
           </div>
