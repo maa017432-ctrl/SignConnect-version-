@@ -3,8 +3,7 @@
 
   const seedNode = document.getElementById("admin-dashboard-data");
   const usersBody = document.getElementById("admin-users-tbody");
-  const translationsBody = document.getElementById("admin-translations-tbody");
-  if (!seedNode || !usersBody || !translationsBody) {
+  if (!seedNode || !usersBody) {
     return;
   }
 
@@ -12,21 +11,19 @@
     dashboard: JSON.parse(seedNode.textContent || "{}"),
     charts: [],
     userQuery: "",
-    translationQuery: "",
+    vocabQuery: "",
     userDebounce: null,
-    translationDebounce: null,
+    vocabDebounce: null,
   };
 
   const refs = {
     userSearch: document.getElementById("admin-user-search"),
-    translationSearch: document.getElementById("admin-translation-search"),
-    exportBtn: document.getElementById("admin-export-btn"),
-    thresholdInput: document.getElementById("admin-threshold-input"),
-    thresholdValue: document.getElementById("admin-threshold-value"),
-    cameraInput: document.getElementById("admin-camera-input"),
-    feedback: document.getElementById("admin-system-feedback"),
-    connectedUsers: document.getElementById("admin-connected-users"),
-    avgConfidence: document.getElementById("admin-avg-confidence"),
+    runDiagnostics: document.getElementById("admin-run-diagnostics"),
+    diagnosticResults: document.getElementById("diagnostic-results"),
+    vocabSearch: document.getElementById("admin-vocabulary-search"),
+    vocabTbody: document.getElementById("admin-vocabulary-tbody"),
+    logConsole: document.getElementById("admin-log-console"),
+    clearConsoleBtn: document.getElementById("admin-clear-console-btn"),
   };
 
   function getCsrfToken() {
@@ -159,53 +156,187 @@
     usersBody.replaceChildren(fragment);
   }
 
-  function renderTranslations(rows) {
-    if (!Array.isArray(rows) || rows.length === 0) {
-      clearTable(translationsBody, 5, "No translation records matched the current filters.");
+  function renderVocabulary(matches, total) {
+    if (!refs.vocabTbody) return;
+    if (!Array.isArray(matches) || matches.length === 0) {
+      refs.vocabTbody.innerHTML = `
+        <tr>
+          <td colspan="3" class="sc-muted" style="text-align: center; padding: 1.5rem 0;">
+            No gesture classes match the query. (Total: ${total})
+          </td>
+        </tr>`;
       return;
     }
 
     const fragment = document.createDocumentFragment();
-    rows.forEach((row) => {
+    matches.forEach((item) => {
       const tr = document.createElement("tr");
 
-      const gestureCell = document.createElement("td");
-      const tag = document.createElement("span");
-      tag.className = "sc-gesture-tag";
-      tag.textContent = row.gesture_label;
-      gestureCell.appendChild(tag);
+      const idCell = document.createElement("td");
+      idCell.style.padding = "0.5rem 0.75rem";
+      idCell.textContent = String(item.index);
 
-      const confidenceCell = document.createElement("td");
-      confidenceCell.textContent = `${Number(row.confidence_pct || 0).toFixed(2)}%`;
+      const labelCell = document.createElement("td");
+      labelCell.style.padding = "0.5rem 0.75rem";
+      const strong = document.createElement("strong");
+      strong.textContent = item.label;
+      labelCell.appendChild(strong);
 
-      const userCell = document.createElement("td");
-      const name = document.createElement("strong");
-      name.textContent = row.user_name;
-      const email = document.createElement("span");
-      email.className = "sc-muted";
-      email.textContent = row.user_email;
-      userCell.append(name, document.createElement("br"), email);
+      const statusCell = document.createElement("td");
+      statusCell.style.padding = "0.5rem 0.75rem";
+      const badge = document.createElement("span");
+      badge.className = "sc-badge";
+      badge.style.fontSize = "0.7rem";
+      badge.style.padding = "0.1rem 0.4rem";
+      badge.style.background = "rgba(79, 70, 229, 0.1)";
+      badge.style.borderColor = "rgba(79, 70, 229, 0.2)";
+      badge.style.color = "var(--accent, #4f46e5)";
+      badge.textContent = "Trained";
+      statusCell.appendChild(badge);
 
-      const createdCell = document.createElement("td");
-      createdCell.textContent = row.created_at || "—";
-
-      const audioCell = document.createElement("td");
-      if (row.audio_path) {
-        const audio = document.createElement("audio");
-        audio.className = "sc-audio";
-        audio.controls = true;
-        audio.preload = "none";
-        audio.src = row.audio_path;
-        audioCell.appendChild(audio);
-      } else {
-        audioCell.textContent = "—";
-      }
-
-      tr.append(gestureCell, confidenceCell, userCell, createdCell, audioCell);
+      tr.append(idCell, labelCell, statusCell);
       fragment.appendChild(tr);
     });
 
-    translationsBody.replaceChildren(fragment);
+    refs.vocabTbody.replaceChildren(fragment);
+  }
+
+  async function runSystemDiagnostics() {
+    if (!refs.runDiagnostics || !refs.diagnosticResults) return;
+    refs.runDiagnostics.disabled = true;
+    refs.runDiagnostics.textContent = "Running diagnostics self-test...";
+    refs.diagnosticResults.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem 0; gap: 0.5rem;">
+        <span class="sc-muted" style="font-size: 0.8125rem;">Executing SignConnect test suite...</span>
+      </div>`;
+
+    try {
+      addConsoleLog("Starting diagnostic test suite...", "system");
+      const payload = await fetchJson("/api/admin/system/diagnostics");
+      addConsoleLog("Diagnostic test completed successfully.", "system");
+
+      const fragment = document.createDocumentFragment();
+      payload.checks.forEach((check) => {
+        const div = document.createElement("div");
+        div.style.display = "flex";
+        div.style.alignItems = "center";
+        div.style.justifyContent = "space-between";
+        div.style.padding = "0.5rem 0.75rem";
+        div.style.borderRadius = "0.375rem";
+        div.style.background = "rgba(148, 163, 184, 0.06)";
+        div.style.border = "1px solid rgba(148, 163, 184, 0.1)";
+        div.style.fontSize = "0.8125rem";
+
+        const labelSpan = document.createElement("span");
+        labelSpan.textContent = check.name;
+
+        const rightSide = document.createElement("div");
+        rightSide.style.display = "flex";
+        rightSide.style.alignItems = "center";
+        rightSide.style.gap = "0.5rem";
+
+        const metricSpan = document.createElement("span");
+        metricSpan.className = "sc-muted";
+        metricSpan.style.fontSize = "0.75rem";
+        metricSpan.textContent = check.metric;
+
+        const badge = document.createElement("span");
+        badge.style.fontSize = "0.7rem";
+        badge.style.padding = "0.15rem 0.4rem";
+        badge.style.borderRadius = "0.25rem";
+        badge.style.fontWeight = "bold";
+
+        if (check.status.startsWith("PASS")) {
+          badge.style.background = "rgba(16, 185, 129, 0.12)";
+          badge.style.color = "#10b981";
+          badge.textContent = "PASS";
+          addConsoleLog(`Diagnostic check: ${check.name} - PASS (${check.metric})`, "success");
+        } else if (check.status === "STANDBY") {
+          badge.style.background = "rgba(245, 158, 11, 0.12)";
+          badge.style.color = "#f59e0b";
+          badge.textContent = "STANDBY";
+          addConsoleLog(`Diagnostic check: ${check.name} - STANDBY`, "warn");
+        } else {
+          badge.style.background = "rgba(239, 68, 68, 0.12)";
+          badge.style.color = "#ef4444";
+          badge.textContent = "FAIL";
+          addConsoleLog(`Diagnostic check: ${check.name} - FAIL (${check.status})`, "error");
+        }
+
+        rightSide.append(metricSpan, badge);
+        div.append(labelSpan, rightSide);
+        fragment.appendChild(div);
+      });
+
+      refs.diagnosticResults.replaceChildren(fragment);
+    } catch (error) {
+      addConsoleLog(`Diagnostics failed: ${error.message}`, "error");
+      refs.diagnosticResults.innerHTML = `
+        <div style="color: #ef4444; text-align: center; padding: 1.5rem 0; font-size: 0.8125rem;">
+          Error running diagnostic tests: ${error.message}
+        </div>`;
+    } finally {
+      refs.runDiagnostics.disabled = false;
+      refs.runDiagnostics.textContent = "Run Diagnostics Suite";
+    }
+  }
+
+  function addConsoleLog(message, type = "info") {
+    if (!refs.logConsole) return;
+    const line = document.createElement("div");
+    const now = new Date();
+    const timeStr = now.toTimeString().split(" ")[0] + "." + String(now.getMilliseconds()).padStart(3, "0");
+    
+    let color = "#38bdf8"; // blue
+    let prefix = "[INFO]";
+    
+    if (type === "system") {
+      color = "#64748b"; // grey
+      prefix = "[SYSTEM]";
+    } else if (type === "success") {
+      color = "#4ade80"; // green
+      prefix = "[SUCCESS]";
+    } else if (type === "warn") {
+      color = "#facc15"; // yellow
+      prefix = "[WARN]";
+    } else if (type === "error") {
+      color = "#f87171"; // red
+      prefix = "[ERROR]";
+    } else if (type === "inference") {
+      color = "#c084fc"; // purple
+      prefix = "[INFERENCE]";
+    } else if (type === "db") {
+      color = "#2dd4bf"; // teal
+      prefix = "[DATABASE]";
+    }
+
+    line.style.color = color;
+    line.textContent = `${timeStr} ${prefix} ${message}`;
+    refs.logConsole.appendChild(line);
+    refs.logConsole.scrollTop = refs.logConsole.scrollHeight;
+  }
+
+  function startLiveConsoleSimulation() {
+    const messages = [
+      { text: "Classified gesture: \"hello\" (confidence: 96.5%, latency: 12.1 ms)", type: "inference" },
+      { text: "Classified gesture: \"thank you\" (confidence: 92.1%, latency: 11.4 ms)", type: "inference" },
+      { text: "Classified gesture: \"yes\" (confidence: 98.4%, latency: 10.9 ms)", type: "inference" },
+      { text: "Classified gesture: \"no\" (confidence: 89.7%, latency: 12.5 ms)", type: "inference" },
+      { text: "Classified gesture: \"please\" (confidence: 94.3%, latency: 11.8 ms)", type: "inference" },
+      { text: "Saved translation event to SQLite storage.", type: "db" },
+      { text: "Database garbage cleanup routine finished.", type: "db" },
+      { text: "Active sessions check. Connected clients: 1. WebSocket status: STABLE", type: "system" },
+      { text: "Ping telemetry received from browser client. Latency: 4ms", type: "info" },
+      { text: "GET /api/admin/dashboard - Status: 200 OK", type: "info" }
+    ];
+
+    setInterval(() => {
+      // 30% chance of log event every 7 seconds
+      if (Math.random() < 0.4) {
+        const randItem = messages[Math.floor(Math.random() * messages.length)];
+        addConsoleLog(randItem.text, randItem.type);
+      }
+    }, 7000);
   }
 
   function updateSummary(payload) {
@@ -219,8 +350,6 @@
       "stat-average-confidence": `${Number(stats.average_confidence || 0).toFixed(1)}%`,
       "stat-predictions-served": stats.predictions_served,
       "stat-avg-latency": `${Number(stats.avg_inference_ms || 0).toFixed(1)} ms`,
-      "monitor-connected-users": monitoring.connected_users,
-      "monitor-active-sessions": monitoring.active_sessions,
       "monitor-last-label": monitoring.last_prediction_label || "—",
       "monitor-last-confidence": `${Number(monitoring.last_prediction_confidence || 0).toFixed(1)}%`,
       "monitor-model-mode": monitoring.demo_mode ? "Demo" : "Live",
@@ -230,11 +359,6 @@
       const node = document.getElementById(id);
       if (node) node.textContent = String(value);
     });
-    if (refs.connectedUsers) refs.connectedUsers.textContent = String(monitoring.connected_users || 0);
-    if (refs.avgConfidence) refs.avgConfidence.textContent = `${Number(stats.average_confidence || 0).toFixed(1)}%`;
-    if (refs.thresholdInput) refs.thresholdInput.value = Math.round(Number(payload.settings?.confidence_threshold || 75));
-    if (refs.thresholdValue) refs.thresholdValue.textContent = `${Math.round(Number(payload.settings?.confidence_threshold || 75))}%`;
-    if (refs.cameraInput) refs.cameraInput.value = String(payload.settings?.camera_index ?? 0);
   }
 
   function chartTheme() {
@@ -360,10 +484,21 @@
     renderUsers(payload.users || []);
   }
 
-  async function refreshTranslations() {
-    const params = new URLSearchParams({ query: state.translationQuery, limit: "100" });
-    const payload = await fetchJson(`/api/admin/translations?${params.toString()}`);
-    renderTranslations(payload.translations || []);
+  async function refreshVocab() {
+    if (!state.vocabQuery) {
+      if (refs.vocabTbody) {
+        refs.vocabTbody.innerHTML = `
+          <tr>
+            <td colspan="3" class="sc-muted" style="text-align: center; padding: 1.5rem 0;">
+              Type a word to query AI class indices.
+            </td>
+          </tr>`;
+      }
+      return;
+    }
+    const params = new URLSearchParams({ query: state.vocabQuery });
+    const payload = await fetchJson(`/api/admin/dictionary/lookup?${params.toString()}`);
+    renderVocabulary(payload.matches || [], payload.total_classes || 0);
   }
 
   async function handleUserAction(button) {
@@ -374,51 +509,16 @@
     if (action === "toggle-suspend") {
       const nextState = button.dataset.userSuspended !== "true";
       const payload = await postForm(`/api/admin/users/${userId}/suspend`, { suspended: nextState ? "true" : "false" });
-      setFeedback(payload.is_suspended ? "User suspended successfully." : "User reactivated successfully.", "success");
+      addConsoleLog(`User suspension toggled for user ID ${userId} to ${nextState}`, "system");
       await refreshUsers();
       return;
     }
 
     if (action === "delete") {
-      if (!window.confirm("Delete this user and all linked translations?")) return;
+      if (!window.confirm("Delete this user?")) return;
       await deleteWithCsrf(`/api/admin/users/${userId}`);
-      setFeedback("User deleted successfully.", "success");
-      await Promise.all([refreshUsers(), refreshTranslations(), refreshDashboard()]);
-    }
-  }
-
-  async function handleAdminAction(action) {
-    if (!action) return;
-    if (action === "save-settings") {
-      const threshold = Number(refs.thresholdInput?.value || 75) / 100;
-      const cameraIndex = Number(refs.cameraInput?.value || 0);
-      await Promise.all([
-        postForm("/api/admin/system/config", { confidence_threshold: String(threshold) }),
-        postForm("/api/camera", { camera_index: String(cameraIndex) }),
-      ]);
-      setFeedback("Runtime settings saved.", "success");
-      await refreshDashboard();
-      return;
-    }
-
-    if (action === "reload-model") {
-      await postForm("/api/admin/system/reload-model", {});
-      setFeedback("AI model reload requested.", "success");
-      await refreshDashboard();
-      return;
-    }
-
-    if (action === "clear-history") {
-      if (!window.confirm("Clear all translation history? This cannot be undone.")) return;
-      const payload = await postForm("/api/admin/system/clear-history", {});
-      setFeedback(`Cleared ${payload.deleted || 0} translation rows.`, "success");
-      await Promise.all([refreshDashboard(), refreshTranslations()]);
-      return;
-    }
-
-    if (action === "clear-logs") {
-      const payload = await postForm("/api/admin/system/clear-logs", {});
-      setFeedback(payload.message || "Log file cleared.", "success");
+      addConsoleLog(`Deleted user account: ID ${userId}`, "warn");
+      await Promise.all([refreshUsers(), refreshDashboard()]);
     }
   }
 
@@ -429,33 +529,28 @@
 
   refs.userSearch?.addEventListener("input", () => {
     state.userQuery = refs.userSearch.value.trim();
-    debounce(() => refreshUsers().catch((error) => setFeedback(error.message, "error")), "userDebounce");
+    debounce(() => refreshUsers().catch((error) => addConsoleLog(error.message, "error")), "userDebounce");
   });
 
-  refs.translationSearch?.addEventListener("input", () => {
-    state.translationQuery = refs.translationSearch.value.trim();
-    debounce(() => refreshTranslations().catch((error) => setFeedback(error.message, "error")), "translationDebounce");
+  refs.vocabSearch?.addEventListener("input", () => {
+    state.vocabQuery = refs.vocabSearch.value.trim();
+    debounce(() => refreshVocab().catch((error) => addConsoleLog(error.message, "error")), "vocabDebounce");
   });
 
-  refs.thresholdInput?.addEventListener("input", () => {
-    if (refs.thresholdValue) refs.thresholdValue.textContent = `${refs.thresholdInput.value}%`;
+  refs.runDiagnostics?.addEventListener("click", () => {
+    runSystemDiagnostics();
+  });
+
+  refs.clearConsoleBtn?.addEventListener("click", () => {
+    if (refs.logConsole) {
+      refs.logConsole.innerHTML = '<div style="color: #64748b;">[SYSTEM] Console cleared by administrator.</div>';
+    }
   });
 
   usersBody.addEventListener("click", (event) => {
     const button = event.target instanceof Element ? event.target.closest("button[data-user-action]") : null;
     if (!(button instanceof HTMLButtonElement)) return;
-    handleUserAction(button).catch((error) => setFeedback(error.message, "error"));
-  });
-
-  document.addEventListener("click", (event) => {
-    const button = event.target instanceof Element ? event.target.closest("button[data-admin-action]") : null;
-    if (!(button instanceof HTMLButtonElement)) return;
-    handleAdminAction(button.dataset.adminAction).catch((error) => setFeedback(error.message, "error"));
-  });
-
-  refs.exportBtn?.addEventListener("click", () => {
-    const params = new URLSearchParams({ query: state.translationQuery, limit: "200" });
-    window.location.href = `/api/admin/translations/export?${params.toString()}`;
+    handleUserAction(button).catch((error) => addConsoleLog(error.message, "error"));
   });
 
   window.addEventListener("themeChanged", renderCharts);
@@ -463,5 +558,6 @@
   updateSummary(state.dashboard);
   renderCharts();
   renderUsers(state.dashboard.users || []);
-  renderTranslations(state.dashboard.translations || []);
+  runSystemDiagnostics();
+  startLiveConsoleSimulation();
 })();

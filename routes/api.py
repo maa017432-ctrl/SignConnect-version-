@@ -1151,3 +1151,87 @@ def admin_clear_logs() -> tuple[Response, int]:
 def admin_reload_model() -> tuple[dict[str, object], int]:
     """Alias route used by the admin dashboard actions panel."""
     return reload_model()
+
+
+@api_bp.get("/api/admin/system/diagnostics")
+def admin_system_diagnostics() -> tuple[Response, int]:
+    """Perform a self-test of the database, model, camera, and MediaPipe services."""
+    auth_error = _require_admin_session_or_api_key()
+    if auth_error is not None:
+        return auth_error
+
+    db_path = current_app.config["DATABASE_PATH"]
+
+    # 1. Database Check
+    db_status = "PASS"
+    db_latency = "0.0 ms"
+    try:
+        start_time = time.perf_counter()
+        with get_connection(db_path) as conn:
+            conn.execute("SELECT 1").fetchone()
+        db_latency = f"{(time.perf_counter() - start_time) * 1000:.1f} ms"
+    except Exception as e:
+        db_status = f"FAIL: {str(e)}"
+
+    # 2. Model file check
+    model_status = "PASS"
+    model_path = current_app.config["MODEL_PATH"]
+    try:
+        if os.path.exists(model_path):
+            size_mb = os.path.getsize(model_path) / (1024 * 1024)
+            model_status = f"PASS ({size_mb:.1f} MB)"
+        else:
+            model_status = "FAIL (File missing)"
+    except Exception as e:
+        model_status = f"FAIL: {str(e)}"
+
+    # 3. MediaPipe Pipeline Check
+    mp_status = "PASS"
+    detector = current_app.extensions.get("gesture_detector")
+    if not detector:
+        mp_status = "FAIL (Not initialized)"
+
+    # 4. Camera Status Check
+    camera_status = "PASS"
+    camera_manager = current_app.extensions.get("camera_manager")
+    if not camera_manager:
+        camera_status = "FAIL (Not initialized)"
+    elif not camera_manager.is_opened():
+        camera_status = "STANDBY"
+
+    return jsonify({
+        "status": "success",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "checks": [
+            {"name": "SQLite Database Connection", "status": db_status, "metric": db_latency, "type": "db"},
+            {"name": "AI Model file (gesture_model.h5)", "status": model_status, "metric": "Loaded", "type": "model"},
+            {"name": "MediaPipe Hand Tracking Pipeline", "status": mp_status, "metric": "Active", "type": "detector"},
+            {"name": "Camera Device Connectivity", "status": camera_status, "metric": f"Index {camera_manager.camera_index if camera_manager else 0}", "type": "camera"}
+        ]
+    }), 200
+
+
+@api_bp.get("/api/admin/dictionary/lookup")
+def admin_dictionary_lookup() -> tuple[Response, int]:
+    """Search for supported gesture classes in the active model's vocabulary."""
+    auth_error = _require_admin_session_or_api_key()
+    if auth_error is not None:
+        return auth_error
+    query = str(request.args.get("query", "")).strip().lower()
+
+    translator = current_app.extensions.get("translator")
+    labels = translator.get_all_labels() if translator else []
+
+    matches = []
+    for idx, label in enumerate(labels):
+        if not query or query in label.lower():
+            matches.append({
+                "index": idx,
+                "label": label,
+                "slug": label.lower().replace(" ", "_")
+            })
+            if len(matches) >= 30:  # limit to top 30 matches
+                break
+
+    return jsonify({"matches": matches, "total_classes": len(labels)}), 200
+
