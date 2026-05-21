@@ -344,6 +344,58 @@ def signup_post():
     return redirect(url_for("main.index"))
 
 
+@auth_bp.post("/change-password")
+def change_password():
+    """Handle password change for authenticated users."""
+    from flask import jsonify
+
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "You must be signed in to change your password."}), 401
+
+    validate_csrf_token()
+
+    current_password = str(request.form.get("current_password", ""))
+    new_password = str(request.form.get("new_password", ""))
+    confirm_password = str(request.form.get("confirm_password", ""))
+
+    if not current_password:
+        return jsonify({"error": "Current password is required."}), 400
+    if not new_password:
+        return jsonify({"error": "New password is required."}), 400
+    if not confirm_password:
+        return jsonify({"error": "Please confirm your new password."}), 400
+    if new_password != confirm_password:
+        return jsonify({"error": "New passwords do not match."}), 400
+
+    strength_error = _password_strength_error(new_password)
+    if strength_error:
+        return jsonify({"error": strength_error}), 400
+
+    db_path = current_app.config["DATABASE_PATH"]
+    user_email = session.get("user_email", "")
+    user = _get_user_by_email(db_path, user_email)
+
+    if not user:
+        return jsonify({"error": "Account not found. Please sign in again."}), 404
+
+    if not check_password_hash(user["password_hash"], current_password):
+        return jsonify({"error": "Current password is incorrect."}), 403
+
+    new_hash = generate_password_hash(new_password)
+    try:
+        with get_connection(db_path) as conn:
+            conn.execute(
+                "UPDATE users SET password_hash = ? WHERE id = ?",
+                (new_hash, user["id"]),
+            )
+        LOGGER.info("User %s changed their password", user_email)
+        return jsonify({"message": "Password updated successfully."}), 200
+    except Exception:
+        LOGGER.exception("Failed to update password for user %s", user_email)
+        return jsonify({"error": "Failed to update password. Please try again."}), 500
+
+
 @auth_bp.get("/signout")
 @auth_bp.post("/signout")
 def signout():

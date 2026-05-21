@@ -112,16 +112,7 @@
                   <span class="stg-toggle-track"></span>
                 </label>
               </div>
-              <div class="stg-row">
-                <div class="stg-row-info">
-                  <span class="stg-row-label">Compact Layout</span>
-                  <span class="stg-row-sub">Tighten spacing to show more on screen</span>
-                </div>
-                <label class="stg-toggle">
-                  <input type="checkbox" id="compact-layout-toggle">
-                  <span class="stg-toggle-track"></span>
-                </label>
-              </div>
+
             </div>
           </div>
         </section>
@@ -142,12 +133,7 @@
                   <option value="0">Camera 0 (Built-in)</option>
                 </select>
               </div>
-              <div class="stg-field">
-                <label>Target FPS — <strong id="fps-val">30</strong></label>
-                <p class="stg-field-sub">Higher FPS improves detection but increases CPU usage</p>
-                <input type="range" class="stg-range" id="fps-range" min="10" max="60" value="30" step="5">
-                <div class="stg-range-labels"><span>10 FPS</span><span>60 FPS</span></div>
-              </div>
+
               <button class="sc-btn sc-btn--primary" id="save-camera-btn">Save Camera Settings</button>
             </div>
           </div>
@@ -243,17 +229,24 @@
           <div class="sc-widget">
             <div class="stg-form">
               {% if current_user and current_user.is_authenticated %}
+              <div id="password-feedback" class="stg-feedback" style="display:none" role="alert"></div>
               <div class="stg-field">
                 <label for="current-password">Current Password</label>
-                <input id="current-password" class="stg-input" type="password" placeholder="••••••••">
+                <input id="current-password" class="stg-input" type="password" placeholder="Enter your current password" autocomplete="current-password">
+                <a href="#" id="forgot-password-link" class="stg-forgot-link">Forgot your password?</a>
+                <div id="forgot-password-notice" class="stg-notice" style="display:none">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <p>Sign out, then use <strong>Sign Up</strong> with the same email to create a new password. If you signed in with Google, no password is needed — just use Google Sign-In.</p>
+                </div>
               </div>
               <div class="stg-field">
                 <label for="new-password">New Password</label>
-                <input id="new-password" class="stg-input" type="password" placeholder="Min. 8 characters">
+                <input id="new-password" class="stg-input" type="password" placeholder="Min. 8 characters" autocomplete="new-password">
+                <p class="stg-field-sub" id="password-strength-hint">Must include uppercase, lowercase, and a number</p>
               </div>
               <div class="stg-field">
                 <label for="confirm-password">Confirm New Password</label>
-                <input id="confirm-password" class="stg-input" type="password" placeholder="Repeat new password">
+                <input id="confirm-password" class="stg-input" type="password" placeholder="Repeat new password" autocomplete="new-password">
               </div>
               <button class="sc-btn sc-btn--primary" id="change-password-btn">Update Password</button>
               <div class="stg-divider"></div>
@@ -318,7 +311,7 @@
   /* ── load saved prefs ── */
   const toggles = {
     "reduce-motion-toggle": "reduceMotion",
-    "compact-layout-toggle": "compactLayout",
+
     "gesture-notif-toggle": "gestureNotif",
     "camera-notif-toggle": "cameraNotif",
     "sfx-toggle": "sfx",
@@ -330,29 +323,34 @@
     const defaults = { gestureNotif:true, cameraNotif:true, saveHistory:true };
     el.checked = loadPref(key, defaults[key] ?? false);
     el.addEventListener("change", async () => {
-      savePref(key, el.checked);
-      if (
-        (key === "gestureNotif" || key === "cameraNotif") &&
-        el.checked &&
-        "Notification" in window &&
-        Notification.permission === "default"
-      ) {
-        const permission = await Notification.requestPermission();
-        if (permission !== "granted") {
-          showToast("Browser notifications are blocked by your permission settings", "warn");
-          return;
+      if (key === "gestureNotif" || key === "cameraNotif") {
+        if (el.checked) {
+          if (!("Notification" in window)) {
+            showToast("This browser does not support notifications", "error");
+            el.checked = false;
+            return;
+          }
+          if (Notification.permission === "denied") {
+            showToast("Notifications are blocked by your browser settings", "error");
+            el.checked = false;
+            return;
+          }
+          if (Notification.permission === "default") {
+            const permission = await Notification.requestPermission();
+            if (permission !== "granted") {
+              showToast("Notifications were not allowed", "warn");
+              el.checked = false;
+              return;
+            }
+          }
         }
       }
+      savePref(key, el.checked);
       showToast("Preference saved");
     });
   });
 
-  /* ── fps range ── */
-  const fpsRange = document.getElementById("fps-range");
-  const fpsVal = document.getElementById("fps-val");
-  fpsRange.value = loadPref("targetFps", 30);
-  fpsVal.textContent = fpsRange.value;
-  fpsRange.addEventListener("input", () => { fpsVal.textContent = fpsRange.value; });
+
 
   /* ── camera index ── */
   const camIdx = document.getElementById("camera-index");
@@ -378,7 +376,6 @@
   }
 
   document.getElementById("save-camera-btn")?.addEventListener("click", async () => {
-    savePref("targetFps", fpsRange.value);
     savePref("cameraIndex", camIdx.value);
     try {
       await applyCameraSettings();
@@ -400,6 +397,12 @@
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
       showToast("Browser notifications enabled");
+      const gestureToggle = document.getElementById("gesture-notif-toggle");
+      const cameraToggle = document.getElementById("camera-notif-toggle");
+      if (gestureToggle) gestureToggle.checked = true;
+      if (cameraToggle) cameraToggle.checked = true;
+      savePref("gestureNotif", true);
+      savePref("cameraNotif", true);
     } else if (permission === "denied") {
       showToast("Notifications were denied in your browser settings", "error");
     } else {
@@ -425,17 +428,84 @@
     showToast("Audio cache cleared (restart server to fully apply)");
   });
 
+  /* ── forgot password toggle ── */
+  document.getElementById("forgot-password-link")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    const notice = document.getElementById("forgot-password-notice");
+    if (notice) notice.style.display = notice.style.display === "none" ? "flex" : "none";
+  });
+
   /* ── change password ── */
-  document.getElementById("change-password-btn")?.addEventListener("click", () => {
-    const np = document.getElementById("new-password").value;
-    const cp = document.getElementById("confirm-password").value;
-    if (!np || np.length < 10) { showToast("Password must be at least 10 characters", "error"); return; }
-    if (!/[A-Z]/.test(np) || !/[a-z]/.test(np) || !/\d/.test(np) || !/[^A-Za-z0-9]/.test(np)) {
-      showToast("Use upper, lower, number, and symbol in password", "error");
-      return;
+  const pwFeedback = document.getElementById("password-feedback");
+  function showPwFeedback(msg, isError) {
+    if (!pwFeedback) return;
+    pwFeedback.textContent = msg;
+    pwFeedback.className = "stg-feedback" + (isError ? " stg-feedback--error" : " stg-feedback--success");
+    pwFeedback.style.display = "block";
+    if (!isError) {
+      setTimeout(() => { pwFeedback.style.display = "none"; }, 5000);
     }
-    if (np !== cp) { showToast("Passwords do not match", "error"); return; }
-    showToast("Password change requires backend integration");
+  }
+  function hidePwFeedback() {
+    if (pwFeedback) pwFeedback.style.display = "none";
+  }
+
+  document.getElementById("change-password-btn")?.addEventListener("click", async () => {
+    hidePwFeedback();
+    const curPw = document.getElementById("current-password");
+    const newPw = document.getElementById("new-password");
+    const conPw = document.getElementById("confirm-password");
+    const btn = document.getElementById("change-password-btn");
+
+    const cur = curPw?.value || "";
+    const np = newPw?.value || "";
+    const cp = conPw?.value || "";
+
+    /* ── Client-side validation ── */
+    if (!cur) { showPwFeedback("Please enter your current password.", true); curPw?.focus(); return; }
+    if (!np) { showPwFeedback("Please enter a new password.", true); newPw?.focus(); return; }
+    if (np.length < 8) { showPwFeedback("Password must be at least 8 characters.", true); newPw?.focus(); return; }
+    if (!/[A-Z]/.test(np)) { showPwFeedback("Password must include at least one uppercase letter.", true); newPw?.focus(); return; }
+    if (!/[a-z]/.test(np)) { showPwFeedback("Password must include at least one lowercase letter.", true); newPw?.focus(); return; }
+    if (!/\d/.test(np)) { showPwFeedback("Password must include at least one number.", true); newPw?.focus(); return; }
+    if (!cp) { showPwFeedback("Please confirm your new password.", true); conPw?.focus(); return; }
+    if (np !== cp) { showPwFeedback("New passwords do not match.", true); conPw?.focus(); return; }
+    if (cur === np) { showPwFeedback("New password must be different from your current password.", true); newPw?.focus(); return; }
+
+    /* ── Call backend ── */
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Updating…";
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+    try {
+      const response = await fetch("/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+        body: new URLSearchParams({
+          current_password: cur,
+          new_password: np,
+          confirm_password: cp,
+          csrf_token: csrfToken,
+        }).toString(),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok) {
+        showPwFeedback(data.message || "Password updated successfully.", false);
+        showToast("Password updated successfully");
+        if (curPw) curPw.value = "";
+        if (newPw) newPw.value = "";
+        if (conPw) conPw.value = "";
+      } else {
+        showPwFeedback(data.error || "Password update failed. Please try again.", true);
+      }
+    } catch {
+      showPwFeedback("Network error. Please check your connection and try again.", true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
   });
 
   /* ── delete account ── */
@@ -445,11 +515,7 @@
     }
   });
 
-  /* ── compact layout ── */
-  const compactEl = document.getElementById("compact-layout-toggle");
-  function applyCompact(v) { document.body.classList.toggle("sc-compact", v); }
-  applyCompact(loadPref("compactLayout", false));
-  compactEl?.addEventListener("change", () => applyCompact(compactEl.checked));
+
 
   /* ── reduce motion ── */
   const motionEl = document.getElementById("reduce-motion-toggle");
