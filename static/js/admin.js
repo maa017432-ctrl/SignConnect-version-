@@ -22,8 +22,7 @@
     diagnosticResults: document.getElementById("diagnostic-results"),
     vocabSearch: document.getElementById("admin-vocabulary-search"),
     vocabTbody: document.getElementById("admin-vocabulary-tbody"),
-    logConsole: document.getElementById("admin-log-console"),
-    clearConsoleBtn: document.getElementById("admin-clear-console-btn"),
+
   };
 
   function getCsrfToken() {
@@ -211,9 +210,9 @@
       </div>`;
 
     try {
-      addConsoleLog("Starting diagnostic test suite...", "system");
+
       const payload = await fetchJson("/api/admin/system/diagnostics");
-      addConsoleLog("Diagnostic test completed successfully.", "system");
+
 
       const fragment = document.createDocumentFragment();
       payload.checks.forEach((check) => {
@@ -250,17 +249,17 @@
           badge.style.background = "rgba(16, 185, 129, 0.12)";
           badge.style.color = "#10b981";
           badge.textContent = "PASS";
-          addConsoleLog(`Diagnostic check: ${check.name} - PASS (${check.metric})`, "success");
+
         } else if (check.status === "STANDBY") {
           badge.style.background = "rgba(245, 158, 11, 0.12)";
           badge.style.color = "#f59e0b";
           badge.textContent = "STANDBY";
-          addConsoleLog(`Diagnostic check: ${check.name} - STANDBY`, "warn");
+
         } else {
           badge.style.background = "rgba(239, 68, 68, 0.12)";
           badge.style.color = "#ef4444";
           badge.textContent = "FAIL";
-          addConsoleLog(`Diagnostic check: ${check.name} - FAIL (${check.status})`, "error");
+
         }
 
         rightSide.append(metricSpan, badge);
@@ -270,7 +269,7 @@
 
       refs.diagnosticResults.replaceChildren(fragment);
     } catch (error) {
-      addConsoleLog(`Diagnostics failed: ${error.message}`, "error");
+
       refs.diagnosticResults.innerHTML = `
         <div style="color: #ef4444; text-align: center; padding: 1.5rem 0; font-size: 0.8125rem;">
           Error running diagnostic tests: ${error.message}
@@ -281,63 +280,7 @@
     }
   }
 
-  function addConsoleLog(message, type = "info") {
-    if (!refs.logConsole) return;
-    const line = document.createElement("div");
-    const now = new Date();
-    const timeStr = now.toTimeString().split(" ")[0] + "." + String(now.getMilliseconds()).padStart(3, "0");
-    
-    let color = "#38bdf8"; // blue
-    let prefix = "[INFO]";
-    
-    if (type === "system") {
-      color = "#64748b"; // grey
-      prefix = "[SYSTEM]";
-    } else if (type === "success") {
-      color = "#4ade80"; // green
-      prefix = "[SUCCESS]";
-    } else if (type === "warn") {
-      color = "#facc15"; // yellow
-      prefix = "[WARN]";
-    } else if (type === "error") {
-      color = "#f87171"; // red
-      prefix = "[ERROR]";
-    } else if (type === "inference") {
-      color = "#c084fc"; // purple
-      prefix = "[INFERENCE]";
-    } else if (type === "db") {
-      color = "#2dd4bf"; // teal
-      prefix = "[DATABASE]";
-    }
 
-    line.style.color = color;
-    line.textContent = `${timeStr} ${prefix} ${message}`;
-    refs.logConsole.appendChild(line);
-    refs.logConsole.scrollTop = refs.logConsole.scrollHeight;
-  }
-
-  function startLiveConsoleSimulation() {
-    const messages = [
-      { text: "Classified gesture: \"hello\" (confidence: 96.5%, latency: 12.1 ms)", type: "inference" },
-      { text: "Classified gesture: \"thank you\" (confidence: 92.1%, latency: 11.4 ms)", type: "inference" },
-      { text: "Classified gesture: \"yes\" (confidence: 98.4%, latency: 10.9 ms)", type: "inference" },
-      { text: "Classified gesture: \"no\" (confidence: 89.7%, latency: 12.5 ms)", type: "inference" },
-      { text: "Classified gesture: \"please\" (confidence: 94.3%, latency: 11.8 ms)", type: "inference" },
-      { text: "Saved translation event to SQLite storage.", type: "db" },
-      { text: "Database garbage cleanup routine finished.", type: "db" },
-      { text: "Active sessions check. Connected clients: 1. WebSocket status: STABLE", type: "system" },
-      { text: "Ping telemetry received from browser client. Latency: 4ms", type: "info" },
-      { text: "GET /api/admin/dashboard - Status: 200 OK", type: "info" }
-    ];
-
-    setInterval(() => {
-      // 30% chance of log event every 7 seconds
-      if (Math.random() < 0.4) {
-        const randItem = messages[Math.floor(Math.random() * messages.length)];
-        addConsoleLog(randItem.text, randItem.type);
-      }
-    }, 7000);
-  }
 
   function updateSummary(payload) {
     state.dashboard = payload;
@@ -509,7 +452,7 @@
     if (action === "toggle-suspend") {
       const nextState = button.dataset.userSuspended !== "true";
       const payload = await postForm(`/api/admin/users/${userId}/suspend`, { suspended: nextState ? "true" : "false" });
-      addConsoleLog(`User suspension toggled for user ID ${userId} to ${nextState}`, "system");
+
       await refreshUsers();
       return;
     }
@@ -517,7 +460,7 @@
     if (action === "delete") {
       if (!window.confirm("Delete this user?")) return;
       await deleteWithCsrf(`/api/admin/users/${userId}`);
-      addConsoleLog(`Deleted user account: ID ${userId}`, "warn");
+
       await Promise.all([refreshUsers(), refreshDashboard()]);
     }
   }
@@ -529,28 +472,24 @@
 
   refs.userSearch?.addEventListener("input", () => {
     state.userQuery = refs.userSearch.value.trim();
-    debounce(() => refreshUsers().catch((error) => addConsoleLog(error.message, "error")), "userDebounce");
+    debounce(() => refreshUsers().catch(console.error), "userDebounce");
   });
 
   refs.vocabSearch?.addEventListener("input", () => {
     state.vocabQuery = refs.vocabSearch.value.trim();
-    debounce(() => refreshVocab().catch((error) => addConsoleLog(error.message, "error")), "vocabDebounce");
+    debounce(() => refreshVocab().catch(console.error), "vocabDebounce");
   });
 
   refs.runDiagnostics?.addEventListener("click", () => {
     runSystemDiagnostics();
   });
 
-  refs.clearConsoleBtn?.addEventListener("click", () => {
-    if (refs.logConsole) {
-      refs.logConsole.innerHTML = '<div style="color: #64748b;">[SYSTEM] Console cleared by administrator.</div>';
-    }
-  });
+
 
   usersBody.addEventListener("click", (event) => {
     const button = event.target instanceof Element ? event.target.closest("button[data-user-action]") : null;
     if (!(button instanceof HTMLButtonElement)) return;
-    handleUserAction(button).catch((error) => addConsoleLog(error.message, "error"));
+    handleUserAction(button).catch(console.error);
   });
 
   window.addEventListener("themeChanged", renderCharts);
@@ -559,5 +498,5 @@
   renderCharts();
   renderUsers(state.dashboard.users || []);
   runSystemDiagnostics();
-  startLiveConsoleSimulation();
+
 })();
